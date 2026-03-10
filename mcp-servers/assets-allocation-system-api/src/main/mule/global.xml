@@ -156,20 +156,11 @@ output application/json
 	<!-- ================================================================== -->
 
 	<!-- HTTP Request Configuration for External Services -->
-	<http:request-config name="External_HTTP_Config"
-		doc:name="External Service Config">
-		<http:request-connection>
-			<http:client-socket-properties>
-				<sockets:tcp-client-socket-properties
-					connectionTimeout="10000" clientTimeout="30000" />
-			</http:client-socket-properties>
-		</http:request-connection>
-	</http:request-config>
 
 	<!-- Employee Onboarding System HTTP Request Configuration -->
 	<http:request-config name="Employee_Onboarding_Request_Config" 
 		doc:name="Employee Onboarding HTTP Request Config">
-		<http:request-connection host="${employee.onboarding.host}" port="${employee.onboarding.port}" protocol="HTTP">
+		<http:request-connection host="${employee.onboarding.host}" port="${employee.onboarding.port}" protocol="HTTPS">
 			<http:client-socket-properties>
 				<sockets:tcp-client-socket-properties
 					connectionTimeout="5000" clientTimeout="15000" />

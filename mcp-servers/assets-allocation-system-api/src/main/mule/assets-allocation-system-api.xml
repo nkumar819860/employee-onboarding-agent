@@ -27,7 +27,7 @@
 	<!-- ================================================================== -->
 	<flow name="assets-allocation-system-api-main">
 		<http:listener doc:name="HTTP Listener" 
-			config-ref="HTTP_Listener_config" 
+			config-ref="HTTPS_Listener_config" 
 			path="/api/*"/>
 		<apikit:router doc:name="APIKit Router" config-ref="assets-allocation-system-api-config" />
 		<error-handler>
