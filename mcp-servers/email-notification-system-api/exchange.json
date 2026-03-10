@@ -1,0 +1,75 @@
+{
+    "groupId": "com.email.notification",
+    "assetId": "email-notification-mcp-server",
+    "version": "1.0.0",
+    "name": "Email Notification MCP Server",
+    "description": "REST API for email notification services including template-based messaging, automated notifications, multi-channel communication, and notification workflow management",
+    "classifier": "mule-application",
+    "contactName": "Notification Services Team",
+    "contactEmail": "email-notifications@company.com",
+    "tags": [
+        "email",
+        "notifications",
+        "messaging",
+        "rest-api",
+        "system-api",
+        "mule-application",
+        "communication"
+    ],
+    "categories": [
+        {
+            "key": "api-type",
+            "value": "System API"
+        },
+        {
+            "key": "business-unit",
+            "value": "Communications"
+        },
+        {
+            "key": "data-classification",
+            "value": "Internal"
+        }
+    ],
+    "customFields": [
+        {
+            "key": "api-version",
+            "value": "v1"
+        },
+        {
+            "key": "supported-protocols",
+            "value": "HTTPS, HTTP"
+        },
+        {
+            "key": "authentication",
+            "value": "API Key"
+        },
+        {
+            "key": "rate-limiting",
+            "value": "1000 requests/hour"
+        }
+    ],
+    "dependencies": [
+        {
+            "groupId": "org.mule.modules",
+            "assetId": "mule-apikit-module",
+            "version": "1.10.4"
+        },
+        {
+            "groupId": "org.mule.connectors",
+            "assetId": "mule-http-connector",
+            "version": "1.9.3"
+        },
+        {
+            "groupId": "org.mule.connectors",
+            "assetId": "mule-email-connector",
+            "version": "1.7.5"
+        }
+    ],
+    "apiSpecifications": [
+        {
+            "assetId": "email-notification-mcp-server",
+            "version": "1.0.0",
+            "groupId": "com.email.notification"
+        }
+    ]
+}

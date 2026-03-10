@@ -1,0 +1,563 @@
+openapi: 3.0.3
+info:
+  title: Employee Onboarding MCP Server API
+  version: 1.0.1
+  description: |
+    The Employee Onboarding MCP (Model Context Protocol) Server provides comprehensive employee lifecycle management capabilities for HR and onboarding processes. This API enables automated employee record creation, status tracking, and onboarding workflow management.
+
+    Key Features:
+    - Complete employee lifecycle management
+    - Automated onboarding workflow orchestration
+    - Multi-database support with intelligent fallback
+    - Real-time employee status tracking
+    - Paginated employee listings with filtering
+    - Comprehensive health monitoring and reporting
+    - RESTful API design with JSON responses
+  contact:
+    name: Employee Onboarding MCP Support
+    email: support@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://employee-onboarding-mcp.cloudhub.io/api
+    description: Production server
+  - url: http://localhost:8081/api
+    description: Development server
+
+components:
+  schemas:
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+        employee_id:
+          type: string
+          description: Unique employee identifier
+        first_name:
+          type: string
+          description: Employee first name
+        last_name:
+          type: string
+          description: Employee last name
+        email:
+          type: string
+          format: email
+          description: Employee email address
+        phone:
+          type: string
+          description: Employee phone number
+        department_id:
+          type: integer
+          description: Department ID
+        position:
+          type: string
+          description: Job position/title
+        hire_date:
+          type: string
+          format: date
+          description: Hire date
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, INACTIVE, TERMINATED]
+          description: Employee status
+        salary:
+          type: number
+          format: float
+          description: Annual salary
+        address:
+          type: string
+          description: Employee address
+        emergency_contact_name:
+          type: string
+          description: Emergency contact name
+        emergency_contact_phone:
+          type: string
+          description: Emergency contact phone
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Record last update timestamp
+      example:
+        employee_id: "EMP001"
+        first_name: "John"
+        last_name: "Doe"
+        email: "john.doe@company.com"
+        phone: "+1-555-0101"
+        department_id: 2
+        position: "Software Engineer"
+        hire_date: "2024-01-15"
+        status: "ACTIVE"
+        salary: 75000.00
+        address: "123 Main St, City, State 12345"
+
+    CreateEmployeeRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+      properties:
+        employeeId:
+          type: string
+          description: Optional employee ID (auto-generated if not provided)
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Employee first name
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Employee last name
+        email:
+          type: string
+          format: email
+          description: Employee email address
+        phone:
+          type: string
+          description: Employee phone number
+        departmentId:
+          type: integer
+          description: Department ID
+        position:
+          type: string
+          description: Job position/title
+        hireDate:
+          type: string
+          format: date
+          description: Hire date
+        salary:
+          type: number
+          format: float
+          description: Annual salary
+        address:
+          type: string
+          description: Employee address
+      example:
+        employeeId: "EMP001"
+        firstName: "John"
+        lastName: "Doe"
+        email: "john.doe@company.com"
+        phone: "+1-555-0101"
+        position: "Software Engineer"
+        salary: 75000.00
+
+    CreateEmployeeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Operation success status
+        message:
+          type: string
+          description: Response message
+        employeeId:
+          type: string
+          description: Created employee ID
+        environment:
+          type: string
+          description: Environment name
+        database:
+          type: string
+          description: Database used
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp
+        mockMode:
+          type: boolean
+          description: Whether mock mode was used
+      example:
+        success: true
+        message: "Employee created successfully"
+        employeeId: "EMP001"
+        environment: "development"
+        database: "h2"
+        timestamp: "2024-01-15T10:30:00Z"
+        mockMode: false
+
+    EmployeeListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Employee'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+        filters:
+          type: object
+        environment:
+          type: string
+        database:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        mockMode:
+          type: boolean
+      example:
+        success: true
+        data:
+          - employee_id: "EMP001"
+            first_name: "John"
+            last_name: "Doe"
+            email: "john.doe@company.com"
+            status: "ACTIVE"
+        pagination:
+          page: 1
+          size: 10
+          totalResults: 50
+          hasMore: true
+        database: "h2"
+        mockMode: false
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Items per page
+        totalResults:
+          type: integer
+          description: Total number of results
+        hasMore:
+          type: boolean
+          description: Whether more pages are available
+
+    StatusUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        employeeId:
+          type: string
+        status:
+          type: string
+        affectedRows:
+          type: integer
+        database:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        mockMode:
+          type: boolean
+      example:
+        success: true
+        message: "Employee status updated successfully"
+        employeeId: "EMP001"
+        status: "ACTIVE"
+        affectedRows: 1
+        database: "h2"
+        timestamp: "2024-01-15T10:30:00Z"
+        mockMode: false
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [HEALTHY, DEGRADED, DOWN]
+        service:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        environment:
+          type: string
+        checks:
+          type: array
+          items:
+            type: object
+        uptime:
+          type: number
+        features:
+          type: object
+      example:
+        status: "HEALTHY"
+        service: "Employee Onboarding MCP Server"
+        version: "1.0.1"
+        timestamp: "2024-01-15T10:30:00Z"
+        environment: "development"
+        uptime: 3600
+        features:
+          mockMode: false
+          databaseRequired: true
+          auditEnabled: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Returns the current health status of the Employee Onboarding MCP Server
+      operationId: getHealthStatus
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service is degraded or unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                status: "DEGRADED"
+                message: "Database connection failed"
+
+  /mcp/info:
+    get:
+      summary: MCP Server Information
+      description: Returns detailed information about the MCP server capabilities and available tools
+      operationId: getMcpServerInfo
+      responses:
+        '200':
+          description: MCP server information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                  description:
+                    type: string
+                  baseUrl:
+                    type: string
+                  environment:
+                    type: string
+                  capabilities:
+                    type: object
+                  endpoints:
+                    type: object
+                  tools:
+                    type: array
+                    items:
+                      type: object
+
+  /create-employee:
+    post:
+      summary: Create Employee
+      description: |
+        Creates a new employee record with the provided information. The system will:
+        1. Generate a unique employee ID if not provided
+        2. Validate email uniqueness
+        3. Set default status to 'PENDING'
+        4. Create employee record in the database
+        5. Return employee creation confirmation
+      operationId: createEmployee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmployeeRequest'
+      responses:
+        '200':
+          description: Employee created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateEmployeeResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "VALIDATION_ERROR"
+                message: "Email address is required"
+        '409':
+          description: Employee already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /get-employee/{empId}:
+    get:
+      summary: Get Employee
+      description: |
+        Retrieves complete employee information including:
+        - Personal details
+        - Employment information
+        - Current status
+        - Department assignment
+        - Contact information
+      operationId: getEmployee
+      parameters:
+        - name: empId
+          in: path
+          required: true
+          description: The unique employee identifier
+          schema:
+            type: string
+          example: "EMP001"
+      responses:
+        '200':
+          description: Employee found and retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          description: Employee not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "EMPLOYEE_NOT_FOUND"
+                message: "Employee not found: EMP001"
+                employeeId: "EMP001"
+
+  /list-employees:
+    get:
+      summary: List Employees
+      description: |
+        Returns a paginated list of employees with support for:
+        - Status filtering (PENDING, ACTIVE, INACTIVE, TERMINATED)
+        - Department filtering
+        - Pagination controls
+        - Sorting by hire date
+      operationId: listEmployees
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          description: Number of employees per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: status
+          in: query
+          description: Filter employees by status
+          schema:
+            type: string
+            enum: [PENDING, ACTIVE, INACTIVE, TERMINATED]
+        - name: department
+          in: query
+          description: Filter employees by department name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Employees retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /update-employee-status/{empId}/{status}:
+    put:
+      summary: Update Employee Status
+      description: |
+        Updates employee status with validation:
+        1. Validates employee exists
+        2. Validates status is allowed value
+        3. Updates employee record
+        4. Records status change timestamp
+        5. Returns update confirmation
+      operationId: updateEmployeeStatus
+      parameters:
+        - name: empId
+          in: path
+          required: true
+          description: The unique employee identifier
+          schema:
+            type: string
+          example: "EMP001"
+        - name: status
+          in: path
+          required: true
+          description: New status for the employee
+          schema:
+            type: string
+            enum: [PENDING, ACTIVE, INACTIVE, TERMINATED]
+          example: "ACTIVE"
+      responses:
+        '200':
+          description: Employee status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusUpdateResponse'
+        '400':
+          description: Invalid status or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "INVALID_STATUS"
+                message: "Status must be one of: PENDING, ACTIVE, INACTIVE, TERMINATED"
+                provided: "INVALID_STATUS"
+        '404':
+          description: Employee not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

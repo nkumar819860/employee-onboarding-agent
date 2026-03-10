@@ -1,0 +1,16 @@
+{
+  "minMuleVersion": "4.9.6",
+  "requiredProduct": "MULE_EE",
+  "name": "employee-onboarding-agent-mcp-proxy",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedPackages": [],
+      "exportedResources": []
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

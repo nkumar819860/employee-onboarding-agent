@@ -1,0 +1,150 @@
+schemaVersion: 1.0.0
+label: Employee Onboarding Agent Network
+brokers:
+  onboarding-orchestrator:
+    card:
+      protocolVersion: 0.3.0
+      name: Employee Onboarding Orchestrator
+      description: "Simplified AI-powered orchestrator for complete employee onboarding workflow. All system integrations are handled internally through the MCP proxy layer."
+      url: https://employee-onboarding-agent-broker.us-e1.cloudhub.io
+      capabilities:
+        pushNotifications: true
+        streaming: false
+        multiStep: true
+      version: 2.2.0
+      securitySchemes: 
+        apiKey:
+          type: "apiKey"
+          in: "header"
+          name: "X-API-Key"
+      defaultInputModes:
+        - "application/json"
+        - "text/plain"
+      defaultOutputModes:
+        - "application/json"
+        - "text/plain"
+      skills:
+        - id: orchestrate-complete-onboarding
+          name: "Complete Employee Onboarding Orchestration"
+          description: "Unified end-to-end employee onboarding process. All system integrations (HR systems, asset management, notifications) are handled internally by the MCP proxy layer."
+          examples:
+            - "Onboard new employee John Doe to Engineering department with laptop and ID card"
+            - "Create profile for Sarah Smith in Marketing, allocate standard assets, send welcome emails"
+            - "Process complete onboarding for developer position with full IT setup"
+          inputModes:
+            - "application/json"
+            - "text/plain"
+          outputModes:
+            - "application/json"
+          tags: ["onboarding", "employee", "orchestration", "unified-api"]
+          parameters:
+            - name: "firstName"
+              type: "string"
+              required: true
+              description: "Employee first name"
+            - name: "lastName" 
+              type: "string"
+              required: true
+              description: "Employee last name"
+            - name: "email"
+              type: "string"
+              required: true
+              description: "Employee email address"
+            - name: "department"
+              type: "string"
+              description: "Department assignment"
+            - name: "position"
+              type: "string"
+              description: "Job position/title"
+            - name: "assets"
+              type: "array"
+              description: "List of assets to allocate (laptop, id-card, phone, etc.)"
+        - id: get-onboarding-status
+          name: "Get Employee Onboarding Status"
+          description: "Retrieve current status and progress of employee onboarding process"
+          examples:
+            - "Check onboarding status for employee EMP001"
+            - "Get progress report for John Doe's onboarding"
+          inputModes:
+            - "application/json"
+          outputModes:
+            - "application/json"
+          tags: ["status", "tracking", "monitoring"]
+        - id: retry-failed-onboarding-step
+          name: "Retry Failed Onboarding Step"
+          description: "Retry specific failed steps in the onboarding process with error recovery"
+          examples:
+            - "Retry asset allocation for employee EMP001"
+            - "Retry welcome email for failed notification"
+          inputModes:
+            - "application/json"
+          outputModes:
+            - "application/json"
+          tags: ["retry", "recovery", "error-handling"]
+        - id: intelligent-onboarding-planning
+          name: "AI-Powered Onboarding Planning"
+          description: "Use LLM reasoning to plan and suggest optimal onboarding strategies based on natural language requests"
+          examples:
+            - "Plan onboarding for senior developer in Hyderabad office"
+            - "Suggest onboarding approach for remote marketing manager"
+          inputModes:
+            - "text/plain"
+            - "application/json"
+          outputModes:
+            - "application/json"
+          tags: ["ai", "planning", "intelligence", "nlp"]
+    spec:
+      llm:
+        ref:
+          name: groq-llm
+        configuration:
+          model: llama3-8b-8192
+      instructions:
+        - "You are a unified employee onboarding orchestrator that simplifies complex HR workflows into a single interface."
+        - "All backend system integrations (employee management, asset allocation, notifications) are handled internally through the MCP proxy layer."
+        - "Always validate employee data completeness before initiating onboarding workflows."
+        - "Provide detailed status updates and clear error messages for any failures."
+        - "Use LLM reasoning to understand and process natural language onboarding requests intelligently."
+        - "The MCP proxy handles the complete workflow sequence: Profile Creation → Asset Allocation → Welcome Email → Asset Notification → Completion Email."
+        - "Handle errors gracefully with automatic retry mechanisms and comprehensive logging."
+        - "Maintain data consistency across all backend systems through the unified proxy interface."
+        - "Provide comprehensive onboarding summaries with all allocated resources and next steps."
+        - "Focus on user experience - users interact with a single endpoint while complexity is abstracted away."
+      links: []
+      tools:
+        - mcp:
+            ref:
+              name: employee-onboarding-agent-mcp-proxy
+mcpServers:
+  employee-onboarding-agent-mcp-proxy:
+    label: Employee Onboarding Agent MCP Proxy
+    metadata:
+      transport:
+        kind: streamableHttp
+        path: /mcp
+llmProviders:
+  groq-llm:
+    label: Groq LLM Provider
+    description: "Groq Llama3 for employee onboarding"
+    metadata:
+      platform: OpenAI
+connections:
+  employee-onboarding-agent-mcp-proxy-connection:
+    kind: mcp
+    ref:
+      name: employee-onboarding-agent-mcp-proxy
+    spec:
+      url: https://employee-onboarding-agent-mcp-proxy.us-e1.cloudhub.io
+      authentication:
+        kind: apiKey
+        apiKey: ${MCP_PROXY_API_KEY}
+        headerName: X-API-Key
+  groq-connection:
+    kind: llm
+    ref:
+      name: groq-llm
+    spec:
+      url: https://api.groq.com/openai/v1
+      configuration:
+        apiKey: ${GROQ_API_KEY}
+        timeout: 30000

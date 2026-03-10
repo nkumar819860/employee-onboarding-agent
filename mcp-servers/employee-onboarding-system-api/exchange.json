@@ -1,0 +1,74 @@
+{
+    "groupId": "com.employee.onboarding",
+    "assetId": "employee-onboarding-system-api",
+    "version": "1.0.0",
+    "name": "Employee Onboarding System API",
+    "description": "REST API for employee onboarding management including profile creation, status tracking, and onboarding workflow automation",
+    "classifier": "mule-application",
+    "contactName": "Employee Onboarding Team",
+    "contactEmail": "employee-onboarding@company.com",
+    "tags": [
+        "employee",
+        "onboarding", 
+        "hr",
+        "rest-api",
+        "system-api",
+        "mule-application"
+    ],
+    "categories": [
+        {
+            "key": "api-type",
+            "value": "System API"
+        },
+        {
+            "key": "business-unit",
+            "value": "Human Resources"
+        },
+        {
+            "key": "data-classification",
+            "value": "Internal"
+        }
+    ],
+    "customFields": [
+        {
+            "key": "api-version",
+            "value": "v1"
+        },
+        {
+            "key": "supported-protocols", 
+            "value": "HTTPS, HTTP"
+        },
+        {
+            "key": "authentication",
+            "value": "API Key"
+        },
+        {
+            "key": "rate-limiting",
+            "value": "1000 requests/hour"
+        }
+    ],
+    "dependencies": [
+        {
+            "groupId": "org.mule.modules",
+            "assetId": "mule-apikit-module",
+            "version": "1.10.4"
+        },
+        {
+            "groupId": "org.mule.connectors", 
+            "assetId": "mule-http-connector",
+            "version": "1.9.3"
+        },
+        {
+            "groupId": "org.mule.connectors",
+            "assetId": "mule-db-connector", 
+            "version": "1.14.9"
+        }
+    ],
+    "apiSpecifications": [
+        {
+            "assetId": "employee-onboarding-system-api",
+            "version": "1.0.0",
+            "groupId": "com.employee.onboarding"
+        }
+    ]
+}

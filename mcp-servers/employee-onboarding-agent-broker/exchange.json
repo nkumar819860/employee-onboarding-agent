@@ -1,0 +1,111 @@
+{
+    "name": "Employee Onboarding Agent Broker MCP Server",
+    "description": "Centralized orchestration MCP server for complete employee onboarding workflow management, coordinating all onboarding processes across multiple services",
+    "version": "2.0.4",
+    "main": "pom.xml",
+    "groupId": "47562e5d-bf49-440a-a0f5-a9cea0a89aa9",
+    "assetId": "employee-onboarding-agent-broker",
+    "classifier": "mcp",
+    "type": "mcpServer",
+    "keywords": [
+        "mcp-server",
+        "agent-broker",
+        "employee-onboarding",
+        "orchestration",
+        "workflow-management",
+        "process-automation",
+        "mulesoft",
+        "java17"
+    ],
+    "author": "MCP Development Team",
+    "license": "MIT",
+    "homepage": "https://github.com/mulesoft/employee-onboarding-mcp-agent-broker",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mulesoft/employee-onboarding-mcp-agent-broker.git"
+    },
+    "bugs": {
+        "url": "https://github.com/mulesoft/employee-onboarding-mcp-agent-broker/issues"
+    },
+    "tags": [
+        "Agent Broker",
+        "MCP Server", 
+        "Process Orchestration",
+        "Employee Onboarding",
+        "Workflow Management"
+    ],
+    "categories": [
+        "MCP Server",
+        "Process Automation",
+        "Employee Onboarding"
+    ],
+    "contactName": "MCP Development Team",
+    "contactEmail": "mcp-dev@company.com",
+    "dependencies": [
+        {
+            "groupId": "org.mule.distributions",
+            "artifactId": "mule-runtime-impl-bom",
+            "version": "4.9.6",
+            "type": "pom",
+            "scope": "import"
+        },
+        {
+            "groupId": "org.mule.connectors",
+            "artifactId": "mule-http-connector",
+            "version": "1.10.0"
+        },
+        {
+            "groupId": "org.mule.connectors",
+            "artifactId": "mule-db-connector", 
+            "version": "1.15.0"
+        },
+        {
+            "groupId": "org.mule.modules",
+            "artifactId": "mule-apikit-module",
+            "version": "1.11.1"
+        }
+    ],
+    "properties": {
+        "muleVersion": "4.9.6",
+        "runtimeVersion": "4.9-java17",
+        "javaVersion": "17",
+        "packaging": "mule-application",
+        "mcpServerType": "agent-broker"
+    },
+    "documentation": {
+        "summary": "Agent Broker MCP Server for centralized employee onboarding orchestration and workflow management.",
+        "description": "The Employee Onboarding Agent Broker MCP Server serves as the central orchestrator for the complete employee onboarding process. This MCP server coordinates and manages the entire onboarding workflow by integrating with multiple specialized MCP servers.\n\n## Key Features\n\n### Orchestration Capabilities\n- **End-to-End Workflow Management**: Coordinates complete employee onboarding from initiation to completion\n- **Multi-Service Integration**: Seamlessly integrates with Employee Onboarding, Asset Allocation, and Notification MCP servers\n- **Process State Management**: Tracks and manages onboarding progress across all stages\n- **Error Handling & Recovery**: Provides retry mechanisms and failure recovery for robust processing\n\n### Core MCP Operations\n\n#### `orchestrate-employee-onboarding`\nComplete employee onboarding orchestration including profile creation, asset allocation, and notifications.\n\n**Parameters:**\n- `firstName` (required): Employee first name\n- `lastName` (required): Employee last name\n- `email` (required): Employee email address\n- `phone`: Employee phone number\n- `department`: Department name\n- `position`: Job position/title\n- `startDate`: Start date (YYYY-MM-DD format)\n- `salary`: Annual salary\n- `manager`: Manager name\n- `managerEmail`: Manager email address\n- `companyName`: Company name\n- `assets`: Array of assets to allocate (laptop, phone, id-card)\n\n#### `get-onboarding-status`\nRetrieve the current status of an employee onboarding process.\n\n**Parameters:**\n- `employeeId`: Employee ID\n- `email`: Employee email address (alternative to employeeId)\n\n#### `retry-failed-step`\nRetry a specific failed step in the employee onboarding process.\n\n**Parameters:**\n- `employeeId` (required): Employee ID\n- `step` (required): Step to retry (profile-creation, asset-allocation, welcome-email, asset-notification, onboarding-complete)\n\n#### `check-system-health`\nCheck the health status of all employee onboarding system components.\n\n### Technical Architecture\n\n#### Integration Pattern\n- **Service Orchestration**: Implements orchestration pattern for managing complex workflows\n- **Event-Driven Architecture**: Uses event-driven communication between services\n- **Compensation Pattern**: Implements compensation actions for transaction rollback\n- **Circuit Breaker**: Provides resilience against downstream service failures\n\n#### Database Integration\n- **Primary Database**: PostgreSQL for production environments\n- **Fallback Database**: H2 in-memory database for development and testing\n- **Transaction Management**: Ensures ACID compliance across operations\n- **Connection Pooling**: Optimized database connection management\n\n#### API Design\n- **OpenAPI 3.0.3 Specification**: Complete API documentation with examples\n- **RESTful Design**: Follows REST principles for consistent API design\n- **JSON Schema Validation**: Request/response validation using JSON schemas\n- **Error Standardization**: Consistent error response format across all endpoints\n\n### Deployment & Runtime\n\n#### CloudHub 2.0 Ready\n- **Java 17 Compatible**: Runs on modern Java runtime\n- **Mule 4.9 Runtime**: Latest stable Mule runtime version\n- **Auto-scaling**: Supports horizontal scaling based on load\n- **Health Monitoring**: Built-in health checks and monitoring\n\n#### Configuration Management\n- **Environment Variables**: Configurable through environment variables\n- **Secure Properties**: Encrypted configuration for sensitive data\n- **Profile-based Configuration**: Different configurations for dev/staging/prod\n\n### Integration Endpoints\n\n#### Downstream Services\n- **Employee Onboarding MCP**: `/api/employees/*` - Employee profile management\n- **Asset Allocation MCP**: `/api/assets/*` - IT asset management\n- **Notification MCP**: `/api/notifications/*` - Email notification services\n\n#### Monitoring & Observability\n- **Application Logs**: Structured logging with correlation IDs\n- **Performance Metrics**: Response time and throughput monitoring\n- **Health Checks**: Liveness and readiness probes\n- **Distributed Tracing**: Request tracing across service boundaries\n\n### Security Features\n- **Authentication**: Secure authentication mechanisms\n- **Authorization**: Role-based access control\n- **Input Validation**: Comprehensive input validation and sanitization\n- **Audit Logging**: Complete audit trail of all operations\n\n## Getting Started\n\n### Prerequisites\n- Mule Runtime 4.9+ with Java 17\n- PostgreSQL database (or H2 for development)\n- Dependent MCP servers (Employee Onboarding, Asset Allocation, Notification)\n\n### Configuration\n1. Configure database connection properties\n2. Set up downstream MCP server endpoints\n3. Configure email notification settings\n4. Deploy to CloudHub 2.0 or Runtime Fabric\n\n### Usage Example\n\n```bash\n# Complete employee onboarding\ncurl -X POST http://localhost:8081/api/onboarding/orchestrate \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john.doe@company.com\",\n    \"department\": \"Engineering\",\n    \"position\": \"Software Engineer\",\n    \"startDate\": \"2024-01-15\",\n    \"assets\": [\"laptop\", \"id-card\", \"phone\"]\n  }'\n```\n\nThis MCP server provides a complete solution for enterprise employee onboarding automation, ensuring consistent and reliable processing of all onboarding workflows."
+    },
+    "apiSpecification": {
+        "type": "OpenAPI",
+        "version": "3.0.3",
+        "location": "src/main/resources/api/agent-broker-mcp-api.yaml",
+        "description": "Complete OpenAPI 3.0.3 specification for the Agent Broker MCP Server with all orchestration endpoints, schemas, and examples"
+    },
+    "mcpMetadata": {
+        "serverType": "agent-broker",
+        "protocol": "http",
+        "capabilities": [
+            "orchestration",
+            "workflow-management",
+            "process-automation",
+            "error-recovery",
+            "health-monitoring"
+        ],
+        "operations": [
+            "orchestrate-employee-onboarding",
+            "get-onboarding-status", 
+            "retry-failed-step",
+            "check-system-health"
+        ],
+        "dependencies": [
+            "employee-onboarding-mcp-server",
+            "assets-allocation-mcp-server",
+            "email-notification-mcp-server"
+        ]
+    },
+    "transport": {
+        "kind": "http",
+        "path": "/api"
+    }
+}

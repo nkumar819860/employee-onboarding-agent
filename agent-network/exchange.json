@@ -1,0 +1,88 @@
+{
+  "name": "Employee Onboarding Agent Network",
+  "description": "Complete employee onboarding orchestration using Agent Fabric with MCP servers for profile creation, asset allocation, and notifications",
+  "version": "2.0.0",
+  "main": "agent-network.yaml",
+  "type": "agent-network",
+  "groupId": "47562e5d-bf49-440a-a0f5-a9cea0a89aa9",
+  "assetId": "employee-onboarding-agent-network",
+  "classifier": "agent-network",
+  "keywords": [
+    "agent-network",
+    "employee-onboarding",
+    "orchestration",
+    "mcp-servers",
+    "agent-fabric",
+    "workflow-automation",
+    "mulesoft"
+  ],
+  "author": "Agent Fabric Team",
+  "license": "MIT",
+  "tags": [
+    "Agent Network",
+    "Employee Onboarding",
+    "Orchestration",
+    "MCP Servers",
+    "Workflow Automation"
+  ],
+  "categories": [
+    "Agent Networks",
+    "Process Automation"
+  ],
+  "contactName": "Agent Fabric Team",
+  "contactEmail": "agent-fabric@company.com",
+  "properties": {
+    "agentFabricVersion": "2.0.0",
+    "mcpProtocolVersion": "0.3.0",
+    "supportedLLMs": ["groq-llama3"],
+    "brokerCount": 1,
+    "mcpServerCount": 3
+  },
+  "documentation": {
+    "summary": "Agent Network for orchestrating complete employee onboarding workflows through intelligent broker coordination with specialized MCP servers.",
+    "description": "The Employee Onboarding Agent Network provides end-to-end automation of employee onboarding processes. It coordinates between multiple MCP servers to handle profile creation, asset allocation, and notification workflows through a centralized agent broker that uses natural language processing and intelligent orchestration."
+  },
+  "agentNetworkMetadata": {
+    "brokers": [
+      {
+        "name": "onboarding-broker",
+        "type": "orchestrator",
+        "capabilities": ["workflow-management", "mcp-coordination", "nlp-processing"],
+        "connectedMCPs": ["employee-onboarding-mcp-server", "assets-allocation-mcp-server", "notification-mcp-server"]
+      }
+    ],
+    "mcpServers": [
+      {
+        "name": "employee-onboarding-mcp-server",
+        "type": "employee-data",
+        "capabilities": ["profile-management", "database-operations"]
+      },
+      {
+        "name": "assets-allocation-mcp-server", 
+        "type": "asset-management",
+        "capabilities": ["asset-tracking", "allocation-workflow"]
+      },
+      {
+        "name": "notification-mcp-server",
+        "type": "communication",
+        "capabilities": ["email-notifications", "welcome-messages"]
+      }
+    ],
+    "workflows": [
+      {
+        "name": "complete-employee-onboarding",
+        "description": "End-to-end employee onboarding from profile creation to asset allocation and notifications",
+        "steps": ["profile-creation", "asset-allocation", "welcome-notification", "manager-notification"]
+      }
+    ]
+  },
+  "transport": {
+    "kind": "agent-network",
+    "brokerUrl": "https://employee-onboarding-agent-broker.us-e1.cloudhub.io",
+    "mcpConnections": {
+      "employee-onboarding-mcp-server": "https://employee-onboarding-mcp-server.us-e1.cloudhub.io",
+      "assets-allocation-mcp-server": "https://assets-allocation-mcp-server.us-e1.cloudhub.io",
+      "notification-mcp-server": "https://email-notification-mcp-server.us-e1.cloudhub.io"
+    }
+  }
+}
