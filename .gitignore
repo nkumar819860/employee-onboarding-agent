@@ -539,6 +539,12 @@ docker-compose.override.yml
 junit.xml
 coverage.xml
 
+# Allow Mule Configuration XML Files
+!**/src/main/mule/*.xml
+!**/src/test/mule/*.xml
+!**/mcp-servers/**/src/main/mule/*.xml
+!**/mcp-servers/**/src/test/mule/*.xml
+
 # Newman (Postman CLI) Results
 newman/
 
