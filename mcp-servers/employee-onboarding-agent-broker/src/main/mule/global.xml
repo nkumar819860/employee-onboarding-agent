@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+	http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+	http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd">
+
+	<!-- Global Configuration Properties -->
+	<configuration-properties
+		file="config.properties" doc:name="Configuration properties" />
+	<!-- HTTPS Listener Configuration for CloudHub - HARDCODED PORT -->
+	<http:listener-config name="HTTPS_Listener_config"
+		doc:name="HTTPS Listener config"
+		doc:id="b76756b9-24d6-46f0-87db-045548b9df41">
+		<http:listener-connection host="0.0.0.0"
+			port="8082" protocol="HTTPS">
+			<tls:context name="tls-context">
+				<tls:key-store type="jks" path="server.jks"
+					keyPassword="MULEPASS" password="MULEPASS" alias="mule-server" />
+			</tls:context>
+		</http:listener-connection>
+	</http:listener-config>
+	<!-- HTTP Listener for Docker/Development Environment -->
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config">
+		<http:listener-connection host="${http.host}"
+			port="${http.port}" protocol="HTTP" />
+	</http:listener-config>
+	<http:request-config
+		name="employee-onboarding-mcp-config"
+		doc:name="Employee Onboarding MCP Config" basePath="/api">
+		<http:request-connection
+			host="${employee.onboarding.mcp.host}" port="443" protocol="HTTPS"
+			usePersistentConnections="false">
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties />
+			</http:client-socket-properties>
+		</http:request-connection>
+	</http:request-config>
+
+	<http:request-config
+		name="asset-allocation-mcp-config"
+		doc:name="Asset Allocation MCP Config" basePath="/api">
+		<http:request-connection
+			host="${asset.allocation.mcp.host}" port="443" protocol="HTTPS"
+			usePersistentConnections="false">
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties />
+			</http:client-socket-properties>
+		</http:request-connection>
+	</http:request-config>
+
+	<http:request-config name="notification-mcp-config"
+		doc:name="Notification MCP Config" basePath="/api">
+		<http:request-connection
+			host="${notification.mcp.host}" port="443" protocol="HTTPS"
+			usePersistentConnections="false">
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties />
+			</http:client-socket-properties>
+		</http:request-connection>
+	</http:request-config>
+
+	<http:request-config name="llm-http-config"
+		doc:name="LLM HTTP Config" basePath="/llm/chat">
+		<http:request-connection
+			host="llm-gateway.cloudhub.io" port="8085" />
+		<http:default-headers>
+			<http:default-header key="Authorization"
+				value="Bearer #[p('groq.api.key')]" />
+		</http:default-headers>
+	</http:request-config>
+
+
+
+
+	<!-- Global Error Handler -->
+	<error-handler name="global-error-handler"
+		doc:name="Global Error Handler">
+		<on-error-propagate type="HTTP:CONNECTIVITY">
+			<set-payload
+				value="#[{'error': 'Connection Error', 'message': 'Unable to connect to MCP server', 'details': error.description, 'timestamp': now() as String {format: 'yyyy-MM-dd HH:mm:ss'}}]"
+				mimeType="application/json" />
+			<set-variable value="503" variableName="httpStatus" />
+		</on-error-propagate>
+		<on-error-propagate type="HTTP:TIMEOUT">
+			<set-payload
+				value="#[{'error': 'Timeout Error', 'message': 'Request to MCP server timed out', 'details': error.description, 'timestamp': now() as String {format: 'yyyy-MM-dd HH:mm:ss'}}]"
+				mimeType="application/json" />
+			<set-variable value="504" variableName="httpStatus" />
+		</on-error-propagate>
+		<on-error-propagate type="ANY">
+			<set-payload
+				value="#[{'error': 'Agent Broker Error', 'message': 'Unexpected error in agent broker', 'details': error.description, 'timestamp': now() as String {format: 'yyyy-MM-dd HH:mm:ss'}}]"
+				mimeType="application/json" />
+			<set-variable value="500" variableName="httpStatus" />
+		</on-error-propagate>
+	</error-handler>
+
+</mule>

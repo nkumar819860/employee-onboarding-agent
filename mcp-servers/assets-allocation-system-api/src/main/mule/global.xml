@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+
+	<!-- Load Properties Configuration -->
+	<configuration-properties file="config.properties" doc:name="Configuration properties"/>
+	<!-- ================================================================== -->
+	<!-- APIKIT ROUTER CONFIGURATION - CONTRACT-FIRST API DEVELOPMENT -->
+	<!-- ================================================================== -->
+
+	<!-- ================================================================== -->
+	<!-- MCP SERVER CONFIGURATION - AGENT FABRIC INTEGRATION -->
+	<!-- ================================================================== -->
+
+	<!-- Global Error Handler for Production Reliability -->
+	<error-handler name="Global_Error_Handler"
+		doc:name="Global Production Error Handler">
+		<on-error-propagate type="DB:CONNECTIVITY"
+			logException="true" enableNotifications="true">
+			<logger level="ERROR"
+				message="Database connectivity error - switching to mock mode: #[error.description]" />
+			<ee:transform doc:name="Database Error Response">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: false,
+	error: "DATABASE_UNAVAILABLE",
+	message: "Database service temporarily unavailable. Please try again later.",
+	timestamp: now(),
+	fallbackMode: "mock"
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus">503</ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</on-error-propagate>
+		<on-error-propagate type="TIMEOUT"
+			logException="true">
+			<logger level="WARN"
+				message="Operation timeout - fallback to cached/mock data: #[error.description]" />
+			<ee:transform doc:name="Timeout Error Response">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: false,
+	error: "SERVICE_TIMEOUT",
+	message: "Request timeout - please try again",
+	timestamp: now()
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus">408</ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</on-error-propagate>
+		<on-error-propagate type="ANY" logException="true">
+			<logger level="ERROR"
+				message="Unexpected error in MCP server: #[error.description]" />
+			<ee:transform doc:name="General Error Response">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: false,
+	error: "INTERNAL_ERROR",
+	message: "Internal server error - support team notified",
+	timestamp: now(),
+	requestId: uuid()
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus">500</ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</on-error-propagate>
+	</error-handler>
+
+	<!-- Configure Global Error Handler -->
+	<configuration
+		defaultErrorHandler-ref="Global_Error_Handler" />
+
+	<!-- ================================================================== -->
+	<!-- DATABASE CONFIGURATIONS - PRODUCTION GRADE WITH CONNECTION POOLING -->
+	<!-- ================================================================== -->
+
+	<!-- H2 Configuration with Connection Pooling and Fixed Script Initialization -->
+	<db:config name="H2_Database_Config"
+		doc:name="H2 Database Config with Fixed Scripts">
+		<db:generic-connection url="${db.h2.url}"
+			driverClassName="${db.h2.driverClassName}" user="${db.h2.username}"
+			password="${db.h2.password}">
+			<db:pooling-profile
+				maxPoolSize="${db.h2.maxPoolSize}"
+				minPoolSize="${db.h2.minPoolSize}" acquireIncrement="1"
+				preparedStatementCacheSize="10" />
+			<db:column-types>
+				<db:column-type typeName="TIMESTAMP" id="93"
+					className="java.sql.Timestamp" />
+				<db:column-type typeName="DATE" id="91"
+					className="java.sql.Date" />
+				<db:column-type typeName="VARCHAR" id="12"
+					className="java.lang.String" />
+				<db:column-type typeName="DECIMAL" id="3"
+					className="java.math.BigDecimal" />
+			</db:column-types>
+		</db:generic-connection>
+	</db:config>
+
+	<!-- ================================================================== -->
+	<!-- HTTP LISTENER CONFIGURATION - ENVIRONMENT AWARE -->
+	<!-- Docker: HTTP | CloudHub/Production: HTTPS with JKS -->
+	<!-- ================================================================== -->
+
+	<!-- HTTP Listener for Docker/Development Environment -->
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config">
+		<http:listener-connection host="${http.host}"
+			port="${http.port}" protocol="HTTP" />
+	</http:listener-config>
+
+
+
+	<http:listener-config name="HTTPS_Listener_config">
+    <http:listener-connection host="0.0.0.0" port="${https.port}" protocol="HTTPS">
+        <tls:context name="tls-context">
+            <tls:key-store type="jks" path="server.jks" 
+                keyPassword="MULEPASS" password="MULEPASS" alias="mule-server" />
+        </tls:context>
+    </http:listener-connection>
+</http:listener-config>
+
+	<!-- ================================================================== -->
+	<!-- PRODUCTION MONITORING & HEALTH CHECK CONFIGURATIONS -->
+	<!-- ================================================================== -->
+
+	<!-- HTTP Request Configuration for External Services -->
+	<http:request-config name="External_HTTP_Config"
+		doc:name="External Service Config">
+		<http:request-connection>
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties
+					connectionTimeout="10000" clientTimeout="30000" />
+			</http:client-socket-properties>
+		</http:request-connection>
+	</http:request-config>
+
+	<!-- Employee Onboarding System HTTP Request Configuration -->
+	<http:request-config name="Employee_Onboarding_Request_Config" 
+		doc:name="Employee Onboarding HTTP Request Config">
+		<http:request-connection host="${employee.onboarding.host}" port="${employee.onboarding.port}" protocol="HTTPS">
+			<http:client-socket-properties>
+				<sockets:tcp-client-socket-properties
+					connectionTimeout="5000" clientTimeout="15000" />
+			</http:client-socket-properties>
+		</http:request-connection>
+	</http:request-config>
+
+	<!-- ================================================================== -->
+	<!-- OPERATIONAL FLOWS FOR PRODUCTION READINESS -->
+	<!-- ================================================================== -->
+
+	<!-- Database Health Check Flow - Environment Aware -->
+	<flow name="database-health-check"
+		doc:name="Database Health Monitor">
+		<scheduler doc:name="Health Check Scheduler">
+			<scheduling-strategy>
+				<fixed-frequency frequency="30" timeUnit="SECONDS"
+					startDelay="10" />
+			</scheduling-strategy>
+		</scheduler>
+
+		<choice doc:name="Health Check Enabled?">
+			<when expression="${db.healthcheck.enabled}">
+				<logger level="INFO"
+					message="Database health check - Strategy: ${db.strategy} | Environment: ${env}" />
+
+				<!-- Environment-Aware Database Selection -->
+				<choice doc:name="Select Database Based on Strategy">
+					<!-- H2 Strategy: Cloud/Local environments -->
+					<when expression='#["h2" == "${db.strategy}"]'>
+						<try doc:name="Test H2 Database">
+							<db:select config-ref="H2_Database_Config">
+								<db:sql>SELECT 1 as health_check, CURRENT_TIMESTAMP as
+									check_time</db:sql>
+							</db:select>
+							<set-variable variableName="databaseHealthy"
+								value="true" />
+							<logger level="DEBUG"
+								message="H2 database health check: PASSED" />
+
+							<error-handler>
+								<on-error-continue type="DB:*">
+									<set-variable variableName="databaseHealthy"
+										value="false" />
+									<logger level="ERROR"
+										message="H2 database health check FAILED: #[error.description]" />
+								</on-error-continue>
+							</error-handler>
+						</try>
+					</when>
+
+					<!-- Auto Strategy: Use H2 for all environments -->
+					<when expression='#["auto" == "${db.strategy}"]'>
+						<try doc:name="Test H2 Database (Auto)">
+							<db:select config-ref="H2_Database_Config">
+								<db:sql>SELECT 1 as health_check, CURRENT_TIMESTAMP as
+									check_time</db:sql>
+							</db:select>
+							<set-variable variableName="databaseHealthy"
+								value="true" />
+							<logger level="DEBUG"
+								message="H2 database health check (auto): PASSED" />
+
+							<error-handler>
+								<on-error-continue type="DB:*">
+									<set-variable variableName="databaseHealthy"
+										value="false" />
+									<logger level="ERROR"
+										message="H2 database health check failed: #[error.description]" />
+								</on-error-continue>
+							</error-handler>
+						</try>
+					</when>
+
+					<!-- Unknown strategy -->
+					<otherwise>
+						<logger level="WARN"
+							message='Unknown database strategy: ${db.strategy}. Skipping health check.' />
+						<set-variable variableName="databaseHealthy"
+							value="false" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="DEBUG"
+					message="Database health check disabled" />
+				<set-variable variableName="databaseHealthy"
+					value="true" />
+			</otherwise>
+		</choice>
+	</flow>
+
+
+	<!-- Database Schema Verification Flow -->
+	<flow name="database-schema-verification" doc:name="Database Schema Verification" initialState="started">
+		<scheduler doc:name="Schema Verification Scheduler">
+			<scheduling-strategy>
+				<fixed-frequency frequency="300" timeUnit="SECONDS" startDelay="15" />
+			</scheduling-strategy>
+		</scheduler>
+		
+		<choice doc:name="Database Verification Enabled?">
+			<when expression="${db.initialization.enabled}">
+				<logger level="INFO" message="Verifying database schema initialization via H2 init script..." />
+				<try doc:name="Verify Schema Tables">
+					<db:select config-ref="H2_Database_Config">
+						<db:sql>SELECT COUNT(*) as table_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME IN ('DEPARTMENTS', 'EMPLOYEES', 'ASSETS', 'ASSET_CATEGORIES', 'ASSET_ALLOCATIONS')</db:sql>
+					</db:select>
+					
+					<choice doc:name="Schema Complete?">
+						<when expression="#[payload[0].table_count >= 5]">
+							<logger level="INFO" message="✅ Database schema verification successful - All tables found: #[payload[0].table_count]" />
+						</when>
+						<otherwise>
+							<logger level="WARN" message="⚠️ Incomplete database schema - Tables found: #[payload[0].table_count]/5" />
+						</otherwise>
+					</choice>
+					
+					<error-handler>
+						<on-error-continue type="DB:*">
+							<logger level="ERROR" message="❌ Database schema verification failed - Database may not be initialized: #[error.description]" />
+							<logger level="INFO" message="🔄 Application will use mock mode fallback for database operations" />
+						</on-error-continue>
+					</error-handler>
+				</try>
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="Database schema verification disabled via configuration" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<!-- Application Startup Flow -->
+	<flow name="application-startup" doc:name="Application Startup"
+		initialState="started">
+		<scheduler doc:name="Startup Scheduler">
+			<scheduling-strategy>
+				<fixed-frequency frequency="86400"
+					timeUnit="SECONDS" startDelay="1" />
+			</scheduling-strategy>
+		</scheduler>
+
+		<logger level="INFO"
+			message="Assets Allocation MCP Server starting up - Version: ${mcp.server.version}" />
+		<logger level="INFO"
+			message="Environment: ${env} | Database Strategy: ${db.strategy}" />
+		<logger level="INFO"
+			message="Features - Mock: ${mcp.features.mock.enabled} | Audit: ${mcp.features.audit.enabled}" />
+		<logger level="INFO"
+			message="Server URL: ${mcp.server.baseUrl}" />
+		<logger level="INFO"
+			message="APIKit Router enabled for contract-first API development" />
+		<logger level="INFO"
+			message="Database Initialization: Auto via H2 INIT script (init-script.sql)" />
+
+		<!-- Initialize monitoring metrics if enabled -->
+		<choice doc:name="Initialize Monitoring">
+			<when expression="${monitoring.metrics.enabled}">
+				<logger level="INFO"
+					message="Initializing production metrics collection" />
+			</when>
+			<otherwise>
+				<logger level="DEBUG" message="Metrics collection disabled" />
+			</otherwise>
+		</choice>
+	</flow>
+
+	<!-- ========================================================================================= -->
+	<!-- DATABASE ERROR HANDLING FLOWS - FALLBACK TO MOCK MODE -->
+	<!-- ========================================================================================= -->
+
+	<!-- Mock Response for Database Failures - Assets List -->
+	<flow name="assets-list-mock-response" doc:name="Assets List Mock Response">
+		<logger level="WARN" message="Using mock mode for assets list - Database unavailable" />
+		
+		<ee:transform doc:name="Mock Assets List Response">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: true,
+	data: [
+		{
+			asset_id: 1,
+			asset_tag: "LAP-001",
+			asset_name: "Dell Latitude 7420 Business Laptop",
+			category_name: "LAPTOP",
+			brand: "Dell",
+			model: "Latitude 7420",
+			status: "AVAILABLE",
+			condition_status: "NEW",
+			location: "IT Storage Room"
+		},
+		{
+			asset_id: 2,
+			asset_tag: "LAP-002", 
+			asset_name: "MacBook Pro 16\"",
+			category_name: "LAPTOP",
+			brand: "Apple",
+			model: "MacBook Pro 16\"",
+			status: "AVAILABLE",
+			condition_status: "NEW",
+			location: "IT Storage Room"
+		},
+		{
+			asset_id: 3,
+			asset_tag: "ID-001",
+			asset_name: "Employee ID Card - Level 2 Access",
+			category_name: "ID_CARD",
+			brand: "HID Global",
+			model: "ProxCard II",
+			status: "AVAILABLE",
+			condition_status: "NEW",
+			location: "Security Office"
+		}
+	],
+	pagination: {
+		page: 1,
+		size: 10,
+		totalResults: 3,
+		hasMore: false
+	},
+	environment: "${env}",
+	database: "mock",
+	timestamp: now(),
+	mockMode: true,
+	warning: "This is mock data - database unavailable"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+
+	<!-- Mock Response for Database Failures - Asset Allocation -->
+	<flow name="asset-allocation-mock-response" doc:name="Asset Allocation Mock Response">
+		<logger level="WARN" message="Using mock mode for asset allocation - Database unavailable" />
+		
+		<ee:transform doc:name="Mock Asset Allocation Response">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: true,
+	message: "Asset allocation successful (mock mode)",
+	allocationId: uuid()[0 to 8],
+	assetTag: payload.assetTag default "MOCK-001",
+	employeeId: payload.employeeId default "EMP001",
+	allocatedDate: now() as Date,
+	status: "ALLOCATED",
+	environment: "${env}",
+	database: "mock",
+	timestamp: now(),
+	mockMode: true,
+	warning: "This is a mock response - no actual database operation was performed"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+
+	<!-- Mock Response for Database Failures - Employee List -->
+	<flow name="employees-list-mock-response" doc:name="Employees List Mock Response">
+		<logger level="WARN" message="Using mock mode for employees list - Database unavailable" />
+		
+		<ee:transform doc:name="Mock Employees List Response">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: true,
+	data: [
+		{
+			employee_id: "EMP001",
+			first_name: "John",
+			last_name: "Smith",
+			email: "john.smith@company.com",
+			phone: "+1-555-0101",
+			position: "Senior Software Engineer",
+			status: "ACTIVE",
+			hire_date: "2024-01-15"
+		},
+		{
+			employee_id: "EMP002",
+			first_name: "Maria",
+			last_name: "Garcia",
+			email: "maria.garcia@company.com",
+			phone: "+1-555-0201",
+			position: "Marketing Manager",
+			status: "ACTIVE",
+			hire_date: "2024-02-01"
+		},
+		{
+			employee_id: "EMP003",
+			first_name: "Robert",
+			last_name: "Wilson",
+			email: "robert.wilson@company.com",
+			phone: "+1-555-0301",
+			position: "HR Specialist",
+			status: "ACTIVE",
+			hire_date: "2024-01-20"
+		}
+	],
+	pagination: {
+		page: 1,
+		size: 10,
+		totalResults: 3,
+		hasMore: false
+	},
+	environment: "${env}",
+	database: "mock",
+	timestamp: now(),
+	mockMode: true,
+	warning: "This is mock data - database unavailable"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+
+
+</mule>
