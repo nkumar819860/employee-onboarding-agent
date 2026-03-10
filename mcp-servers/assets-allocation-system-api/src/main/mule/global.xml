@@ -169,7 +169,7 @@ output application/json
 	<!-- Employee Onboarding System HTTP Request Configuration -->
 	<http:request-config name="Employee_Onboarding_Request_Config" 
 		doc:name="Employee Onboarding HTTP Request Config">
-		<http:request-connection host="${employee.onboarding.host}" port="${employee.onboarding.port}" protocol="HTTPS">
+		<http:request-connection host="${employee.onboarding.host}" port="${employee.onboarding.port}" protocol="HTTP">
 			<http:client-socket-properties>
 				<sockets:tcp-client-socket-properties
 					connectionTimeout="5000" clientTimeout="15000" />

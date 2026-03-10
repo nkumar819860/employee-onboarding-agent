@@ -261,6 +261,9 @@ output application/json
 		<logger level="INFO" message="Asset allocation request: #[payload]" />
 		
 		<try doc:name="Asset Allocation">
+			<!-- Store original payload FIRST -->
+			<set-variable variableName="originalPayload" value="#[payload]" />
+			
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
 				<when expression="#[payload.employeeId == null or payload.employeeId == '']">
@@ -269,40 +272,40 @@ output application/json
 				</when>
 			</choice>
 
-			<!-- Database Asset Allocation Logic -->
+			<!-- Asset Allocation Logic with Employee API Integration -->
 			<choice doc:name="Database Strategy">
 				<when expression='#["h2" == "${db.strategy}"]'>
-					<!-- Check if employee exists or create new entry -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT employee_id FROM employees WHERE employee_id = :employeeId</db:sql>
-						<db:input-parameters><![CDATA[#[{
-							employeeId: payload.employeeId
-						}]]]></db:input-parameters>
-					</db:select>
-
-					<!-- Create employee if not exists -->
-					<choice doc:name="Employee Exists Check">
-						<when expression="#[sizeOf(payload) == 0]">
-							<db:insert config-ref="H2_Database_Config">
-								<db:sql>INSERT INTO employees (employee_id, first_name, last_name, email, phone, department, position, hire_date, status) 
-									VALUES (:employeeId, :firstName, :lastName, :email, :phone, :department, :position, CURRENT_DATE, 'ACTIVE')</db:sql>
-								<db:input-parameters><![CDATA[#[{
-									employeeId: payload.employeeId,
-									firstName: payload.firstName default "Unknown",
-									lastName: payload.lastName default "Employee", 
-									email: payload.email default (payload.employeeId ++ "@company.com"),
-									phone: payload.phone default "+1-555-0000",
-									department: payload.department default "General",
-									position: payload.position default "Employee"
-								}]]]></db:input-parameters>
-							</db:insert>
-							<logger level="INFO" message="Created new employee record for: #[payload.employeeId]" />
-						</when>
-					</choice>
+					<!-- Fetch employee details from Employee Onboarding API -->
+					<try doc:name="Get Employee Details">
+						<http:request method="GET" config-ref="Employee_Onboarding_Request_Config" 
+							path="/api/get-employee/{empId}">
+							<http:uri-params><![CDATA[#[{
+								empId: vars.originalPayload.employeeId
+							}]]]></http:uri-params>
+						</http:request>
+						
+						<set-variable variableName="employeeDetails" value="#[payload]" />
+						<logger level="INFO" message="Employee details retrieved: #[vars.employeeDetails.employee_id]" />
+						
+						<error-handler>
+							<on-error-continue type="HTTP:*">
+								<logger level="WARN" message="Employee API unavailable - proceeding with basic employee info" />
+								<set-variable variableName="employeeDetails" value="#[{
+									employee_id: vars.originalPayload.employeeId,
+									first_name: vars.originalPayload.firstName default 'Unknown',
+									last_name: vars.originalPayload.lastName default 'Employee',
+									email: vars.originalPayload.email default (vars.originalPayload.employeeId ++ '@company.com'),
+									phone: vars.originalPayload.phone default '+1-555-0000',
+									department: vars.originalPayload.department default 'General',
+									position: vars.originalPayload.position default 'Employee'
+								}]" />
+							</on-error-continue>
+						</error-handler>
+					</try>
 
 					<!-- Find and allocate available assets -->
 					<set-variable variableName="requestedAssets" 
-						value="#[payload.assets default ['laptop', 'id-card']]" />
+						value="#[vars.originalPayload.assets default ['laptop', 'id-card']]" />
 					<set-variable variableName="allocatedAssets" value="#[[]]" />
 
 					<!-- Allocate each requested asset type -->
@@ -367,7 +370,15 @@ output application/json
 	message: "Assets allocated successfully",
 	database: "h2",
 	employeeId: vars.originalPayload.employeeId,
-	employeeName: (vars.originalPayload.firstName default "Unknown") ++ " " ++ (vars.originalPayload.lastName default "Employee"),
+	employeeName: (vars.employeeDetails.first_name default "Unknown") ++ " " ++ (vars.employeeDetails.last_name default "Employee"),
+	employeeDetails: {
+		employeeId: vars.employeeDetails.employee_id,
+		firstName: vars.employeeDetails.first_name,
+		lastName: vars.employeeDetails.last_name,
+		email: vars.employeeDetails.email,
+		department: vars.employeeDetails.department_id,
+		position: vars.employeeDetails.position
+	},
 	allocatedAssets: vars.allocatedAssets map {
 		assetId: $.asset_id as String,
 		assetTag: $.asset_tag,
@@ -418,9 +429,6 @@ output application/json
 				</on-error-continue>
 			</error-handler>
 		</try>
-		
-		<!-- Store original payload for use in foreach -->
-		<set-variable variableName="originalPayload" value="#[payload]" />
 	</flow>
 
 	<!-- Return Asset Endpoint -->
