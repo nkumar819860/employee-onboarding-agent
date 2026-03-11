@@ -348,8 +348,8 @@ output application/json
 			<http:request method="POST"
 				config-ref="notification-mcp-config"
 				path="/send-welcome-email" doc:name="Send Welcome Email">
-				<http:body>#[payload]</http:body>
-				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
+				<http:body><![CDATA[#[payload]]]></http:body>
+				<http:headers><![CDATA[#[{"Content-Type": "application/json"}]]]></http:headers>
 			</http:request>
 			<set-variable variableName="welcomeEmailResult"
 				value="#[payload]" doc:name="Store Welcome Email Result" />

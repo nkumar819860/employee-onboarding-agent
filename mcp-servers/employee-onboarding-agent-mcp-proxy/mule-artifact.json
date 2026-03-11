@@ -12,5 +12,13 @@
   "bundleDescriptorLoader": {
     "id": "mule",
     "attributes": {}
-  }
+  },
+  "sharedLibraries": [
+    {
+      "name": "commons-pool2",
+      "groupId": "org.apache.commons",
+      "artifactId": "commons-pool2",
+      "version": "2.11.1"
+    }
+  ]
 }
