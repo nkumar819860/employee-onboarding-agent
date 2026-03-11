@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.employee.onboarding</groupId>
+        <artifactId>mcp-servers-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>employee-onboarding-agent-broker</artifactId>
+    <packaging>mule-application</packaging>
+
+    <name>Employee Onboarding Agent Broker</name>
+    <description>Process API that orchestrates employee onboarding workflow by coordinating between system APIs and providing intelligent agent-based automation</description>
+
+    <properties>
+        <cloudhub.application.name>employee-onboarding-agent-broker</cloudhub.application.name>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.mule.tools.maven</groupId>
+                <artifactId>mule-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Alternative deployment configuration using direct username/password -->
+                    <deployment>
+                        <uri>https://anypoint.mulesoft.com</uri>
+                        <username>${username}</username>
+                        <password>${password}</password>
+                        <!-- Use encrypted password: mvn encrypt-password yourPassword -->
+                    </deployment>
+                    
+                    <!-- CloudHub 2.0 deployment configuration (alternative) -->
+                    <cloudhub2Deployment>
+                        <applicationName>${cloudhub.application.name}</applicationName>
+                        <target>${cloudhub.application.name}</target>
+                        <properties>
+                            <http.port>8081</http.port>
+                            <https.port>8082</https.port>
+                            <http.host>0.0.0.0</http.host>
+                            <env>production</env>
+                            <onboarding.system.api.host>employee-onboarding-system-api.cloudhub.io</onboarding.system.api.host>
+                            <onboarding.system.api.port>443</onboarding.system.api.port>
+                            <onboarding.system.api.protocol>HTTPS</onboarding.system.api.protocol>
+                            <assets.allocation.api.host>assets-allocation-system-api.cloudhub.io</assets.allocation.api.host>
+                            <assets.allocation.api.port>443</assets.allocation.api.port>
+                            <assets.allocation.api.protocol>HTTPS</assets.allocation.api.protocol>
+                            <email.notification.api.host>email-notification-system-api.cloudhub.io</email.notification.api.host>
+                            <email.notification.api.port>443</email.notification.api.port>
+                            <email.notification.api.protocol>HTTPS</email.notification.api.protocol>
+                            <agent.reasoning.enabled>true</agent.reasoning.enabled>
+                            <agent.fallback.enabled>true</agent.fallback.enabled>
+                            <agent.retry.attempts>3</agent.retry.attempts>
+                            <agent.timeout>60000</agent.timeout>
+                            <workflow.orchestration.enabled>true</workflow.orchestration.enabled>
+                            <monitoring.metrics.enabled>true</monitoring.metrics.enabled>
+                        </properties>
+                    </cloudhub2Deployment>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <!-- Mule HTTP Connector -->
+        <dependency>
+            <groupId>org.mule.connectors</groupId>
+            <artifactId>mule-http-connector</artifactId>
+        </dependency>
+
+        <!-- Mule Sockets Connector -->
+        <dependency>
+            <groupId>org.mule.connectors</groupId>
+            <artifactId>mule-sockets-connector</artifactId>
+        </dependency>
+
+        <!-- APIKit Module -->
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-apikit-module</artifactId>
+            <version>1.10.4</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <!-- Mule JSON Module -->
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-json-module</artifactId>
+        </dependency>
+
+        <!-- Mule Validation Module -->
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-validation-module</artifactId>
+        </dependency>
+
+        <!-- Mule Secure Configuration Property Module -->
+        <dependency>
+            <groupId>com.mulesoft.modules</groupId>
+            <artifactId>mule-secure-configuration-property-module</artifactId>
+        </dependency>
+
+        <!-- Mule Aggregators Module -->
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-aggregators-module</artifactId>
+            <version>1.0.3</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Apache Commons Pool -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
+        <!-- MUnit Testing Framework -->
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-runner</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-tools</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>

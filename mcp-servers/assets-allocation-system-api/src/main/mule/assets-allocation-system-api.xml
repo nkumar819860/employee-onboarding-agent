@@ -7,13 +7,15 @@
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
 	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
 	xsi:schemaLocation="
     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
     http://www.mulesoft.org/schema/mule/cache http://www.mulesoft.org/schema/mule/cache/current/mule-cache.xsd
 	http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 	http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 	http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
-	http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+	http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
 
 	<!-- ================================================================== -->
 	<!-- APIKIT ROUTER CONFIGURATION -->
@@ -277,7 +279,7 @@ output application/json
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
 				<when expression="#[payload.employeeId == null or payload.employeeId == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD" description="Employee ID is required for asset allocation" />
+					<raise-error type="APP:MISSING_FIELD" description="Employee ID is required for asset allocation" />
 				</when>
 			</choice>
 
@@ -338,8 +340,8 @@ output application/json
 			</choice>
 
 			<error-handler>
-				<on-error-continue type="VALIDATION:*">
-					<ee:transform doc:name="Validation Error Response">
+				<on-error-continue type="APP:*">
+					<ee:transform doc:name="Application Error Response">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
 output application/json

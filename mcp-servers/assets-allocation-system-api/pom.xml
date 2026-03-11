@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.employee.onboarding</groupId>
+		<artifactId>mcp-servers-parent</artifactId>
+		<version>1.0.0</version>
+	</parent>
+
+	<artifactId>assets-allocation-system-api</artifactId>
+	<packaging>mule-application</packaging>
+
+	<name>Assets Allocation System API</name>
+	<description>System API for managing employee asset allocation including laptops, phones, access cards, and other company resources</description>
+
+	<properties>
+		<cloudhub.application.name>assets-allocation-system-api</cloudhub.application.name>
+		<connectedApp.clientId>aec0b3117f7d4d4e8433a7d3d23bc80e</connectedApp.clientId>
+		<connectedApp.clientSecret>9bc9D86a77b343b98a148C0313239aDA</connectedApp.clientSecret>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.mule.tools.maven</groupId>
+				<artifactId>mule-maven-plugin</artifactId>
+				<version>4.5.0</version>
+				<extensions>true</extensions>
+				<configuration>
+					<cloudhub2Deployment>
+						<applicationName>${cloudhub.application.name}</applicationName>
+						<target>${cloudhub.application.name}</target>
+
+						<!-- FIXED Connected App -->
+						<connectedAppClientId>${connectedApp.clientId}</connectedAppClientId>
+						<connectedAppClientSecret>${connectedApp.clientSecret}</connectedAppClientSecret>
+						<connectedAppGrantType>client_credentials</connectedAppGrantType>
+
+						<properties>
+							<db.strategy>h2</db.strategy>
+							<db.h2.url>jdbc:h2:mem:assets_db</db.h2.url>
+							<db.h2.driverClassName>org.h2.Driver</db.h2.driverClassName>
+							<db.h2.username>sa</db.h2.username>
+							<db.h2.password></db.h2.password>
+							<db.h2.maxPoolSize>10</db.h2.maxPoolSize>
+							<db.h2.minPoolSize>1</db.h2.minPoolSize>
+							<db.initialization.enabled>true</db.initialization.enabled>
+							<db.healthcheck.enabled>true</db.healthcheck.enabled>
+							<http.port>8081</http.port>
+							<https.port>8082</https.port>
+							<http.host>0.0.0.0</http.host>
+							<env>production</env>
+							<assets.default.laptop>Dell Latitude 7420</assets.default.laptop>
+							<assets.default.phone>iPhone 15</assets.default.phone>
+							<assets.default.accessories>Mouse, Keyboard, Monitor</assets.default.accessories>
+							<assets.allocation.enabled>true</assets.allocation.enabled>
+							<assets.tracking.enabled>true</assets.tracking.enabled>
+							<monitoring.metrics.enabled>true</monitoring.metrics.enabled>
+						</properties>
+					</cloudhub2Deployment>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<!-- Mule HTTP Connector -->
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-http-connector</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- Mule Database Connector -->
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-db-connector</artifactId>
+			<version>1.14.9</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- APIKit Module -->
+		<dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-apikit-module</artifactId>
+			<version>1.10.4</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- Mule JSON Module -->
+		<dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-json-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- Mule Validation Module -->
+		<dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-validation-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- Mule Secure Configuration Property Module -->
+		<dependency>
+			<groupId>com.mulesoft.modules</groupId>
+			<artifactId>mule-secure-configuration-property-module</artifactId>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+
+		<!-- H2 Database -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>2.2.224</version>
+		</dependency>
+
+		<!-- Jackson for JSON processing -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+
+		<!-- Apache Commons Pool -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-pool2</artifactId>
+		</dependency>
+
+		<!-- MUnit Testing Framework -->
+		<dependency>
+			<groupId>com.mulesoft.munit</groupId>
+			<artifactId>munit-runner</artifactId>
+			<classifier>mule-plugin</classifier>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.mulesoft.munit</groupId>
+			<artifactId>munit-tools</artifactId>
+			<classifier>mule-plugin</classifier>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+</project>

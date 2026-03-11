@@ -1,23 +1,260 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
-http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" 
+      xmlns:db="http://www.mulesoft.org/schema/mule/db" 
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+      xmlns:http="http://www.mulesoft.org/schema/mule/http" 
+      xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp" 
+      xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" 
+      xmlns:tls="http://www.mulesoft.org/schema/mule/tls" 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd 
+                          http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+                          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+                          http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd 
+                          http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd 
+                          http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
 
-	<!-- Global HTTP Configuration -->
-	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
-		<http:listener-connection host="0.0.0.0" port="8081" />
-	</http:listener-config>
+    <!-- Load Properties Configuration -->
+    <configuration-properties file="config.properties" doc:name="Configuration properties"/>
 
-	<!-- HTTP Request Configuration for Agent Broker Process API -->
-	<http:request-config name="agent-broker-http-config" doc:name="Agent Broker HTTP Request config">
-		<http:request-connection host="employee-onboarding-agent-broker.us-e1.cloudhub.io" port="443" protocol="HTTPS" />
-	</http:request-config>
+    <!-- HTTP Listener Configuration -->
+    <http:listener-config doc:name="HTTP Listener config" name="HTTP_Listener_config">
+        <http:listener-connection host="0.0.0.0" port="${http.port}"/>
+    </http:listener-config>
 
-	<!-- Note: MCP configuration removed due to schema validation issues -->
-	<!-- MCP 1.3.0 configuration will need to be added with correct syntax -->
+    <!-- MCP Listener Configuration -->
+    <http:listener-config doc:name="MCP Listener config" name="MCP_Listener_config">
+        <http:listener-connection host="0.0.0.0" port="${mcp.listener.port}"/>
+    </http:listener-config>
+
+    <!-- Agent Broker HTTP Request Configuration -->
+    <http:request-config doc:name="Agent Broker HTTP Request config" name="agent-broker-http-config">
+        <http:request-connection host="${agent.broker.host}" port="${agent.broker.port}" protocol="${agent.broker.protocol}">
+            <http:client-socket-properties>
+                <sockets:tcp-client-socket-properties clientTimeout="60000" connectionTimeout="30000"/>
+            </http:client-socket-properties>
+        </http:request-connection>
+    </http:request-config>
+
+    <!-- HTTPS Listener Configuration for CloudHub -->
+    <http:listener-config doc:id="e2e7269a-f46f-41bd-949a-b1ab4ea33190" doc:name="HTTPS Listener config" name="HTTPS_Listener_config">
+        <http:listener-connection host="0.0.0.0" port="${https.port}" protocol="HTTPS">
+            <tls:context name="tls-context">
+                <tls:key-store alias="mule-server" keyPassword="MULEPASS" password="MULEPASS" path="src/main/resources/server.jks" type="jks"/>
+            </tls:context>
+        </http:listener-connection>
+    </http:listener-config>
+
+    <!-- MCP Server Configuration with Tool Registry -->
+    <mcp:server-config doc:name="MCP Server Config" name="MCP_Server_Config" serverName="${mcp.server.name}" serverVersion="${mcp.server.version}">
+        <mcp:streamable-http-server-connection listenerConfig="MCP_Listener_config">
+            <mcp:session-handling/>
+        </mcp:streamable-http-server-connection>
+        
+        <!-- Tool Registry Configuration -->
+        <mcp:tools>
+            <mcp:tool description="Complete employee onboarding orchestration including profile creation, asset allocation, and notifications" name="orchestrate-employee-onboarding">
+                <mcp:input-schema><![CDATA[{
+                    "type": "object",
+                    "properties": {
+                        "firstName": {
+                            "type": "string",
+                            "description": "Employee first name"
+                        },
+                        "lastName": {
+                            "type": "string",
+                            "description": "Employee last name"
+                        },
+                        "email": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "Employee email address"
+                        },
+                        "phone": {
+                            "type": "string",
+                            "pattern": "^[+]?[1-9]\\d{1,14}$",
+                            "description": "Employee phone number"
+                        },
+                        "department": {
+                            "type": "string",
+                            "enum": ["HR", "IT", "Finance", "Sales", "Marketing", "Operations", "Engineering"],
+                            "description": "Department name"
+                        },
+                        "position": {
+                            "type": "string",
+                            "description": "Job position/title"
+                        },
+                        "startDate": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Start date in YYYY-MM-DD format"
+                        },
+                        "salary": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Annual salary"
+                        },
+                        "manager": {
+                            "type": "string",
+                            "description": "Manager name"
+                        },
+                        "managerEmail": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "Manager email address"
+                        },
+                        "companyName": {
+                            "type": "string",
+                            "description": "Company name"
+                        },
+                        "assets": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of assets to allocate (laptop, phone, access-card, etc.)"
+                        }
+                    },
+                    "required": ["firstName", "lastName", "email", "department", "position", "startDate"]
+                }]]></mcp:input-schema>
+            </mcp:tool>
+            
+            <mcp:tool description="Retrieve the current status of an employee onboarding process" name="get-onboarding-status">
+                <mcp:input-schema><![CDATA[{
+                    "type": "object",
+                    "properties": {
+                        "employeeId": {
+                            "type": "string",
+                            "description": "Unique employee identifier"
+                        },
+                        "email": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "Employee email address"
+                        }
+                    },
+                    "anyOf": [
+                        {"required": ["employeeId"]},
+                        {"required": ["email"]}
+                    ]
+                }]]></mcp:input-schema>
+            </mcp:tool>
+            
+            <mcp:tool description="Retry a specific failed step in the employee onboarding process" name="retry-failed-step">
+                <mcp:input-schema><![CDATA[{
+                    "type": "object",
+                    "properties": {
+                        "employeeId": {
+                            "type": "string",
+                            "description": "Unique employee identifier"
+                        },
+                        "step": {
+                            "type": "string",
+                            "enum": [
+                                "profile-creation",
+                                "asset-allocation", 
+                                "welcome-email",
+                                "asset-notification",
+                                "onboarding-complete"
+                            ],
+                            "description": "The specific onboarding step to retry"
+                        }
+                    },
+                    "required": ["employeeId", "step"]
+                }]]></mcp:input-schema>
+            </mcp:tool>
+            
+            <mcp:tool description="Check the health status of all employee onboarding system components" name="check-system-health">
+                <mcp:input-schema><![CDATA[{
+                    "type": "object",
+                    "properties": {
+                        "detailed": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Include detailed component status information"
+                        }
+                    }
+                }]]></mcp:input-schema>
+            </mcp:tool>
+            
+            <mcp:tool description="Use AI reasoning to understand natural language requests and suggest onboarding actions" name="ai-reasoning">
+                <mcp:input-schema><![CDATA[{
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "minLength": 10,
+                            "maxLength": 1000,
+                            "description": "Natural language request for employee onboarding assistance"
+                        },
+                        "context": {
+                            "type": "object",
+                            "properties": {
+                                "employeeId": {"type": "string"},
+                                "department": {"type": "string"},
+                                "currentStep": {"type": "string"}
+                            },
+                            "description": "Optional context to help with reasoning"
+                        }
+                    },
+                    "required": ["prompt"]
+                }]]></mcp:input-schema>
+            </mcp:tool>
+        </mcp:tools>
+    </mcp:server-config>
+
+    <!-- Global Error Handler for MCP Operations -->
+    <error-handler name="HTTP_MCP_Global_Error_Handler" doc:name="HTTP MCP Global Error Handler">
+        <on-error-propagate type="HTTP:*" logException="true">
+            <logger level="ERROR" message="HTTP Error in MCP operation: #[error.description]"/>
+            <ee:transform doc:name="HTTP Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    jsonrpc: "2.0",
+    id: payload.id default null,
+    error: {
+        code: -32603,
+        message: "Backend Service Error: " ++ error.description,
+        data: {
+            httpStatus: vars.httpStatus default "unknown",
+            timestamp: now()
+        }
+    }
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+        </on-error-propagate>
+        
+        <on-error-propagate type="ANY" logException="true">
+            <logger level="ERROR" message="Unexpected error in MCP proxy: #[error.description]"/>
+            <ee:transform doc:name="Generic Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    jsonrpc: "2.0",
+    id: payload.id default null,
+    error: {
+        code: -32603,
+        message: "Internal server error",
+        data: {
+            timestamp: now(),
+            requestId: uuid()
+        }
+    }
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+        </on-error-propagate>
+    </error-handler>
+
+    <!-- Configure Global Error Handler -->
+    <configuration defaultErrorHandler-ref="HTTP_MCP_Global_Error_Handler" />
 
 </mule>
