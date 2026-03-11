@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:cache="http://www.mulesoft.org/schema/mule/cache" 
-	xmlns="http://www.mulesoft.org/schema/mule/core" 
+<mule xmlns:cache="http://www.mulesoft.org/schema/mule/cache"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
-	xmlns:db="http://www.mulesoft.org/schema/mule/db" 
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
 	xsi:schemaLocation="
     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
     http://www.mulesoft.org/schema/mule/cache http://www.mulesoft.org/schema/mule/cache/current/mule-cache.xsd
@@ -18,21 +18,23 @@
 	<!-- ================================================================== -->
 	<!-- APIKIT ROUTER CONFIGURATION -->
 	<!-- ================================================================== -->
-	<apikit:config name="assets-allocation-system-api-config" 
-		api="assets-allocation-system-api.yaml" outboundHeadersMapName="outboundHeaders" 
+	<apikit:config name="assets-allocation-system-api-config"
+		api="assets-allocation-system-api.yaml"
+		outboundHeadersMapName="outboundHeaders"
 		httpStatusVarName="httpStatus" />
 
 	<!-- ================================================================== -->
 	<!-- MAIN HTTP LISTENER FLOW -->
 	<!-- ================================================================== -->
 	<flow name="assets-allocation-system-api-main">
-		<http:listener doc:name="HTTP Listener" 
-			config-ref="HTTPS_Listener_config" 
-			path="/api/*"/>
-		<apikit:router doc:name="APIKit Router" config-ref="assets-allocation-system-api-config" />
+		<http:listener doc:name="HTTP Listener"
+			config-ref="HTTPS_Listener_config" path="/api/*" />
+		<apikit:router doc:name="APIKit Router"
+			config-ref="assets-allocation-system-api-config" />
 		<error-handler>
-			<on-error-propagate enableNotifications="true" logException="true" 
-				doc:name="On Error Propagate" type="APIKIT:BAD_REQUEST">
+			<on-error-propagate enableNotifications="true"
+				logException="true" doc:name="On Error Propagate"
+				type="APIKIT:BAD_REQUEST">
 				<ee:transform doc:name="Bad Request Response">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
@@ -46,12 +48,14 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 					<ee:variables>
-						<ee:set-variable variableName="httpStatus">400</ee:set-variable>
+						<ee:set-variable variableName="httpStatus">400
+						</ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 			</on-error-propagate>
-			<on-error-propagate enableNotifications="true" logException="true" 
-				doc:name="On Error Propagate" type="APIKIT:NOT_FOUND">
+			<on-error-propagate enableNotifications="true"
+				logException="true" doc:name="On Error Propagate"
+				type="APIKIT:NOT_FOUND">
 				<ee:transform doc:name="Not Found Response">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
@@ -65,12 +69,14 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 					<ee:variables>
-						<ee:set-variable variableName="httpStatus">404</ee:set-variable>
+						<ee:set-variable variableName="httpStatus">404
+						</ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 			</on-error-propagate>
-			<on-error-propagate enableNotifications="true" logException="true" 
-				doc:name="On Error Propagate" type="APIKIT:METHOD_NOT_ALLOWED">
+			<on-error-propagate enableNotifications="true"
+				logException="true" doc:name="On Error Propagate"
+				type="APIKIT:METHOD_NOT_ALLOWED">
 				<ee:transform doc:name="Method Not Allowed Response">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
@@ -84,12 +90,14 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 					<ee:variables>
-						<ee:set-variable variableName="httpStatus">405</ee:set-variable>
+						<ee:set-variable variableName="httpStatus">405
+						</ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 			</on-error-propagate>
-			<on-error-propagate enableNotifications="true" logException="true" 
-				doc:name="On Error Propagate" type="APIKIT:NOT_ACCEPTABLE">
+			<on-error-propagate enableNotifications="true"
+				logException="true" doc:name="On Error Propagate"
+				type="APIKIT:NOT_ACCEPTABLE">
 				<ee:transform doc:name="Not Acceptable Response">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
@@ -103,7 +111,8 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 					<ee:variables>
-						<ee:set-variable variableName="httpStatus">406</ee:set-variable>
+						<ee:set-variable variableName="httpStatus">406
+						</ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 			</on-error-propagate>
@@ -117,7 +126,7 @@ output application/json
 	<!-- Health Check Endpoint -->
 	<flow name="get:\health:assets-allocation-system-api-config">
 		<logger level="INFO" message="Health check request received" />
-		
+
 		<try doc:name="Health Check">
 			<!-- Check database connectivity -->
 			<choice doc:name="Database Strategy Check">
@@ -194,7 +203,8 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">503</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">503
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
@@ -205,7 +215,7 @@ output application/json
 	<!-- MCP Server Info Endpoint -->
 	<flow name="get:\mcp\info:assets-allocation-system-api-config">
 		<logger level="INFO" message="MCP server info request received" />
-		
+
 		<ee:transform doc:name="MCP Info Response">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
@@ -257,17 +267,21 @@ output application/json
 	</flow>
 
 	<!-- Allocate Assets Endpoint -->
-	<flow name="post:\allocate-assets:application\json:assets-allocation-system-api-config">
-		<logger level="INFO" message="Asset allocation request: #[payload]" />
-		
+	<flow
+		name="post:\allocate-assets:application\json:assets-allocation-system-api-config">
+		<logger level="INFO"
+			message="Asset allocation request: #[payload]" />
+
 		<try doc:name="Asset Allocation">
 			<!-- Store original payload FIRST -->
-			<set-variable variableName="originalPayload" value="#[payload]" />
-			
+			<set-variable variableName="originalPayload"
+				value="#[payload]" />
+
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
-				<when expression="#[payload.employeeId == null or payload.employeeId == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD" 
+				<when
+					expression="#[payload.employeeId == null or payload.employeeId == '']">
+					<raise-error type="VALIDATION:MISSING_FIELD"
 						description="Employee ID is required for asset allocation" />
 				</when>
 			</choice>
@@ -277,49 +291,51 @@ output application/json
 				<when expression='#["h2" == "${db.strategy}"]'>
 					<!-- Fetch employee details from Employee Onboarding API -->
 					<try doc:name="Get Employee Details">
-						<http:request method="GET" config-ref="Employee_Onboarding_Request_Config" 
+						<http:request method="GET"
+							config-ref="Employee_Onboarding_Request_Config"
 							path="/api/get-employee/{empId}">
 							<http:uri-params><![CDATA[#[{
 								empId: vars.originalPayload.employeeId
 							}]]]></http:uri-params>
 						</http:request>
+
+						<set-variable variableName="employeeDetails"
+							value="#[payload]" />
+						<logger level="INFO"
+							message="Employee details retrieved: #[vars.employeeDetails.employee_id]" />
 						
-						<set-variable variableName="employeeDetails" value="#[payload]" />
-						<logger level="INFO" message="Employee details retrieved: #[vars.employeeDetails.employee_id]" />
-						
+						<!-- Check if employee details are null or empty -->
+						<choice doc:name="Validate Employee Details">
+							<when expression="#[vars.employeeDetails == null or vars.employeeDetails.employee_id == null]">
+								<raise-error type="EMPLOYEE:NOT_FOUND"
+									description="Employee not found in the system" />
+							</when>
+						</choice>
+
 						<error-handler>
 							<on-error-continue type="HTTP:*">
-								<logger level="WARN" message="Employee API unavailable - proceeding with basic employee info" />
-								<set-variable variableName="employeeDetails" value="#[{
-									employee_id: vars.originalPayload.employeeId,
-									first_name: vars.originalPayload.firstName default 'Unknown',
-									last_name: vars.originalPayload.lastName default 'Employee',
-									email: vars.originalPayload.email default (vars.originalPayload.employeeId ++ '@company.com'),
-									phone: vars.originalPayload.phone default '+1-555-0000',
-									department: vars.originalPayload.department default 'General',
-									position: vars.originalPayload.position default 'Employee'
-								}]" />
+								<logger level="ERROR"
+									message="Employee API unavailable or employee not found" />
+								<raise-error type="EMPLOYEE:API_UNAVAILABLE"
+									description="Employee onboarding system is unavailable" />
 							</on-error-continue>
 						</error-handler>
 					</try>
 
 					<!-- Find and allocate available assets -->
-					<set-variable variableName="requestedAssets" 
+					<set-variable variableName="requestedAssets"
 						value="#[vars.originalPayload.assets default ['laptop', 'id-card']]" />
-					<set-variable variableName="allocatedAssets" value="#[[]]" />
+					<set-variable variableName="allocatedAssets"
+						value="#[[]]" />
 
 					<!-- Allocate each requested asset type -->
 					<foreach collection="#[vars.requestedAssets]">
-						<set-variable variableName="assetType" 
+						<set-variable variableName="assetType"
 							value="#[if (payload is String) upper(payload replace '-' with '_') else upper(payload['type'] replace '-' with '_')]" />
-						
+
 						<!-- Find available asset of this type -->
 						<db:select config-ref="H2_Database_Config">
-							<db:sql>SELECT a.*, ac.category_name 
-								FROM assets a 
-								JOIN asset_categories ac ON a.category_id = ac.category_id 
-								WHERE ac.category_name = :assetType AND a.status = 'AVAILABLE' 
-								LIMIT 1</db:sql>
+							<db:sql>SELECT a.*, ac.category_name FROM assets a JOIN asset_categories ac ON a.category_id = ac.category_id WHERE ac.category_name = :assetType AND a.status = 'AVAILABLE' LIMIT 1</db:sql>
 							<db:input-parameters><![CDATA[#[{
 								assetType: vars.assetType
 							}]]]></db:input-parameters>
@@ -328,8 +344,9 @@ output application/json
 						<!-- Allocate asset if available -->
 						<choice doc:name="Asset Available Check">
 							<when expression="#[sizeOf(payload) > 0]">
-								<set-variable variableName="selectedAsset" value="#[payload[0]]" />
-								
+								<set-variable variableName="selectedAsset"
+									value="#[payload[0]]" />
+
 								<!-- Update asset status to ALLOCATED -->
 								<db:update config-ref="H2_Database_Config">
 									<db:sql>UPDATE assets SET status = 'ALLOCATED' WHERE asset_id = :assetId</db:sql>
@@ -349,12 +366,14 @@ output application/json
 								</db:insert>
 
 								<!-- Add to allocated assets list -->
-								<set-variable variableName="allocatedAssets" 
+								<set-variable variableName="allocatedAssets"
 									value="#[vars.allocatedAssets ++ [vars.selectedAsset]]" />
-								<logger level="INFO" message="Allocated asset #[vars.selectedAsset.asset_tag] to employee #[vars.originalPayload.employeeId]" />
+								<logger level="INFO"
+									message="Allocated asset #[vars.selectedAsset.asset_tag] to employee #[vars.originalPayload.employeeId]" />
 							</when>
 							<otherwise>
-								<logger level="WARN" message="No available assets found for type: #[vars.assetType]" />
+								<logger level="WARN"
+									message="No available assets found for type: #[vars.assetType]" />
 							</otherwise>
 						</choice>
 					</foreach>
@@ -419,27 +438,67 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">400
+							</ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+				</on-error-continue>
+				<on-error-continue type="EMPLOYEE:*">
+					<ee:transform doc:name="Employee Error Response">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: false,
+	error: "EMPLOYEE_ERROR",
+	message: error.description,
+	employeeId: vars.originalPayload.employeeId,
+	timestamp: now()
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="httpStatus">404
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR" message="Database error during asset allocation: #[error.description]" />
-					<flow-ref name="asset-allocation-mock-response" />
+					<logger level="ERROR"
+						message="Database error during asset allocation: #[error.description]" />
+					<ee:transform doc:name="Database Error Response">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	success: false,
+	error: "DATABASE_ERROR",
+	message: "Asset allocation failed due to database error",
+	timestamp: now()
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="httpStatus">500
+							</ee:set-variable>
+						</ee:variables>
+					</ee:transform>
 				</on-error-continue>
 			</error-handler>
 		</try>
 	</flow>
 
 	<!-- Return Asset Endpoint -->
-	<flow name="post:\return-asset:application\json:assets-allocation-system-api-config">
+	<flow
+		name="post:\return-asset:application\json:assets-allocation-system-api-config">
 		<logger level="INFO" message="Asset return request: #[payload]" />
 
 		<try doc:name="Asset Return">
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
-				<when expression="#[payload.assetTag == null or payload.assetTag == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD" 
+				<when
+					expression="#[payload.assetTag == null or payload.assetTag == '']">
+					<raise-error type="VALIDATION:MISSING_FIELD"
 						description="Asset tag is required for asset return" />
 				</when>
 			</choice>
@@ -457,7 +516,8 @@ output application/json
 
 					<choice doc:name="Asset Found Check">
 						<when expression="#[sizeOf(payload) > 0]">
-							<set-variable variableName="asset" value="#[payload[0]]" />
+							<set-variable variableName="asset"
+								value="#[payload[0]]" />
 
 							<!-- Update asset status and condition -->
 							<db:update config-ref="H2_Database_Config">
@@ -515,7 +575,8 @@ output application/json
 }]]></ee:set-payload>
 								</ee:message>
 								<ee:variables>
-									<ee:set-variable variableName="httpStatus">404</ee:set-variable>
+									<ee:set-variable variableName="httpStatus">404
+									</ee:set-variable>
 								</ee:variables>
 							</ee:transform>
 						</otherwise>
@@ -557,12 +618,14 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">400
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR" message="Database error during asset return: #[error.description]" />
+					<logger level="ERROR"
+						message="Database error during asset return: #[error.description]" />
 					<ee:transform doc:name="Database Error Response">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
@@ -576,7 +639,8 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">500</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">500
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
@@ -584,43 +648,50 @@ output application/json
 		</try>
 
 		<!-- Store original payload -->
-		<set-variable variableName="originalPayload" value="#[payload]" />
+		<set-variable variableName="originalPayload"
+			value="#[payload]" />
 	</flow>
 
 	<!-- List Assets Endpoint -->
 	<flow name="get:\list-assets:assets-allocation-system-api-config">
-		<logger level="INFO" message="List assets request - Status: #[attributes.queryParams.status default 'ALL'], Category: #[attributes.queryParams.category default 'ALL']" />
+		<logger level="INFO"
+			message="List assets request - Status: #[attributes.queryParams.status default 'ALL'], Category: #[attributes.queryParams.category default 'ALL']" />
 
 		<try doc:name="List Assets">
 			<choice doc:name="Database Strategy">
 				<when expression='#["h2" == "${db.strategy}"]'>
 					<!-- Build dynamic SQL query based on filters -->
-					<set-variable variableName="statusFilter" value="#[attributes.queryParams.status]" />
-					<set-variable variableName="categoryFilter" value="#[attributes.queryParams.category]" />
-					<set-variable variableName="baseQuery" 
+					<set-variable variableName="statusFilter"
+						value="#[attributes.queryParams.status]" />
+					<set-variable variableName="categoryFilter"
+						value="#[attributes.queryParams.category]" />
+					<set-variable variableName="baseQuery"
 						value="SELECT a.*, ac.category_name FROM assets a JOIN asset_categories ac ON a.category_id = ac.category_id WHERE 1=1" />
-					
+
 					<!-- Add status filter if provided -->
 					<choice doc:name="Status Filter">
-						<when expression="#[vars.statusFilter != null and vars.statusFilter != '']">
-							<set-variable variableName="query" 
+						<when
+							expression="#[vars.statusFilter != null and vars.statusFilter != '']">
+							<set-variable variableName="query"
 								value="#[vars.baseQuery ++ ' AND a.status = \'' ++ upper(vars.statusFilter) ++ '\'']" />
 						</when>
 						<otherwise>
-							<set-variable variableName="query" value="#[vars.baseQuery]" />
+							<set-variable variableName="query"
+								value="#[vars.baseQuery]" />
 						</otherwise>
 					</choice>
 
 					<!-- Add category filter if provided -->
 					<choice doc:name="Category Filter">
-						<when expression="#[vars.categoryFilter != null and vars.categoryFilter != '']">
-							<set-variable variableName="query" 
+						<when
+							expression="#[vars.categoryFilter != null and vars.categoryFilter != '']">
+							<set-variable variableName="query"
 								value="#[vars.query ++ ' AND ac.category_name = \'' ++ upper(vars.categoryFilter) ++ '\'']" />
 						</when>
 					</choice>
 
 					<!-- Add ordering -->
-					<set-variable variableName="query" 
+					<set-variable variableName="query"
 						value="#[vars.query ++ ' ORDER BY a.asset_tag']" />
 
 					<!-- Execute query -->
@@ -636,7 +707,8 @@ output application/json
 							FROM assets 
 							GROUP BY status</db:sql>
 					</db:select>
-					<set-variable variableName="statistics" value="#[payload]" />
+					<set-variable variableName="statistics"
+						value="#[payload]" />
 
 					<!-- Build response -->
 					<ee:transform doc:name="List Assets Response">
@@ -676,18 +748,21 @@ output application/json
 
 			<error-handler>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR" message="Database error during asset listing: #[error.description]" />
+					<logger level="ERROR"
+						message="Database error during asset listing: #[error.description]" />
 					<flow-ref name="assets-list-mock-response" />
 				</on-error-continue>
 			</error-handler>
 		</try>
 
 		<!-- Store asset results for transform -->
-		<set-variable variableName="assetResults" value="#[payload]" />
+		<set-variable variableName="assetResults"
+			value="#[payload]" />
 	</flow>
 
 	<!-- Get Available Assets Endpoint -->
-	<flow name="get:\get-available-assets:assets-allocation-system-api-config">
+	<flow
+		name="get:\get-available-assets:assets-allocation-system-api-config">
 		<logger level="INFO" message="Get available assets request" />
 
 		<try doc:name="Get Available Assets">
@@ -741,7 +816,8 @@ output application/json
 				</when>
 				<otherwise>
 					<!-- Mock Mode Response -->
-					<ee:transform doc:name="Mock Available Assets Response">
+					<ee:transform
+						doc:name="Mock Available Assets Response">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -786,8 +862,10 @@ output application/json
 
 			<error-handler>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR" message="Database error during available assets retrieval: #[error.description]" />
-					<ee:transform doc:name="Mock Available Assets Fallback">
+					<logger level="ERROR"
+						message="Database error during available assets retrieval: #[error.description]" />
+					<ee:transform
+						doc:name="Mock Available Assets Fallback">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -821,18 +899,22 @@ output application/json
 		</try>
 
 		<!-- Store available assets for transform -->
-		<set-variable variableName="availableAssets" value="#[payload]" />
+		<set-variable variableName="availableAssets"
+			value="#[payload]" />
 	</flow>
 
 	<!-- Get Employee Assets Endpoint -->
-	<flow name="post:\get-employee-assets:application\json:assets-allocation-system-api-config">
-		<logger level="INFO" message="Get employee assets request: #[payload]" />
+	<flow
+		name="post:\get-employee-assets:application\json:assets-allocation-system-api-config">
+		<logger level="INFO"
+			message="Get employee assets request: #[payload]" />
 
 		<try doc:name="Get Employee Assets">
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
-				<when expression="#[payload.employeeId == null or payload.employeeId == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD" 
+				<when
+					expression="#[payload.employeeId == null or payload.employeeId == '']">
+					<raise-error type="VALIDATION:MISSING_FIELD"
 						description="Employee ID is required to get employee assets" />
 				</when>
 			</choice>
@@ -856,8 +938,9 @@ output application/json
 					<choice doc:name="Assets Found Check">
 						<when expression="#[sizeOf(payload) > 0]">
 							<!-- Get unique categories -->
-							<set-variable variableName="employeeAssets" value="#[payload]" />
-							<set-variable variableName="assetCategories" 
+							<set-variable variableName="employeeAssets"
+								value="#[payload]" />
+							<set-variable variableName="assetCategories"
 								value="#[payload distinctBy $.category_name map $.category_name]" />
 
 							<ee:transform doc:name="Employee Assets Response">
@@ -963,12 +1046,14 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">400
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR" message="Database error during employee assets retrieval: #[error.description]" />
+					<logger level="ERROR"
+						message="Database error during employee assets retrieval: #[error.description]" />
 					<ee:transform doc:name="Database Error Response">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
@@ -982,7 +1067,8 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">500</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">500
+							</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
@@ -990,7 +1076,8 @@ output application/json
 		</try>
 
 		<!-- Store original payload -->
-		<set-variable variableName="originalPayload" value="#[payload]" />
+		<set-variable variableName="originalPayload"
+			value="#[payload]" />
 	</flow>
 
 </mule>
