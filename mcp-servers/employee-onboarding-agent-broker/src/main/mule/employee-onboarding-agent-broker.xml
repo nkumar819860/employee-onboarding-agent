@@ -799,7 +799,7 @@ output application/java
 
 	<!-- OPTIONS /get-onboarding-status -->
 	<flow
-		name="options:\mcp\tools\get-onboarding-status:agent-broker-config">
+		name="options:\get-onboarding-status:agent-broker-config">
 		<set-variable variableName="origin"
 			value="#[attributes.headers.origin default '*']"
 			doc:name="Set CORS Origin" />
@@ -826,7 +826,7 @@ output application/java
 
 	<!-- OPTIONS /retry-failed-step -->
 	<flow
-		name="options:\mcp\tools\retry-failed-step:agent-broker-config">
+		name="options:\retry-failed-step:agent-broker-config">
 		<set-variable variableName="origin"
 			value="#[attributes.headers.origin default '*']"
 			doc:name="Set CORS Origin" />
@@ -853,7 +853,7 @@ output application/java
 
 
 	<flow
-		name="post:\mcp\tools\think:application\json:agent-broker-config">
+		name="post:\think:application\json:agent-broker-config">
 
 		<set-variable variableName="origin"
 			value="#[attributes.headers.origin default '*']"

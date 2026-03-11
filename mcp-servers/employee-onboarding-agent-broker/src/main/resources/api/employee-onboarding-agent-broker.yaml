@@ -133,18 +133,18 @@ paths:
                     example:
                       - name: orchestrate-employee-onboarding
                         description: Complete employee onboarding process orchestration
-                        endpoint: /mcp/tools/orchestrate-employee-onboarding
+                        endpoint: /orchestrate-employee-onboarding
                       - name: get-onboarding-status
                         description: Get employee onboarding process status
-                        endpoint: /mcp/tools/get-onboarding-status
+                        endpoint: /get-onboarding-status
                       - name: retry-failed-step
                         description: Retry a failed onboarding step
-                        endpoint: /mcp/tools/retry-failed-step
+                        endpoint: /retry-failed-step
                       - name: think
                         description: Use LLM to reason about onboarding requests
-                        endpoint: /mcp/tools/think
+                        endpoint: /think
 
-  /mcp/tools/orchestrate-employee-onboarding:
+  /orchestrate-employee-onboarding:
     post:
       tags:
         - Orchestration
@@ -287,7 +287,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /mcp/tools/get-onboarding-status:
+  /get-onboarding-status:
     post:
       tags:
         - Status Tracking
@@ -369,7 +369,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /mcp/tools/retry-failed-step:
+  /retry-failed-step:
     post:
       tags:
         - Recovery
@@ -442,7 +442,7 @@ paths:
                     format: date-time
 
   # ============ LLM REASONING ENDPOINT ============
-  /mcp/tools/think:
+  /think:
     post:
       tags:
         - LLM Reasoning
