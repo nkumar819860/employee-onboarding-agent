@@ -35,7 +35,7 @@ http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/
 		name="employee-onboarding-mcp-config"
 		doc:name="Employee Onboarding MCP Config" basePath="/api">
 		<http:request-connection
-			host="${employee.onboarding.mcp.host}" port="443" protocol="HTTPS"
+			host="employee-onboarding-system-api.us-e1.cloudhub.io" port="443" protocol="HTTPS"
 			usePersistentConnections="false">
 			<http:client-socket-properties>
 				<sockets:tcp-client-socket-properties />
@@ -47,7 +47,7 @@ http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/
 		name="asset-allocation-mcp-config"
 		doc:name="Asset Allocation MCP Config" basePath="/api">
 		<http:request-connection
-			host="${asset.allocation.mcp.host}" port="443" protocol="HTTPS"
+			host="assets-allocation-system-api.us-e1.cloudhub.io" port="443" protocol="HTTPS"
 			usePersistentConnections="false">
 			<http:client-socket-properties>
 				<sockets:tcp-client-socket-properties />
@@ -58,7 +58,7 @@ http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/
 	<http:request-config name="notification-mcp-config"
 		doc:name="Notification MCP Config" basePath="/api">
 		<http:request-connection
-			host="${notification.mcp.host}" port="443" protocol="HTTPS"
+			host="email-notification-system-api.us-e1.cloudhub.io" port="443" protocol="HTTPS"
 			usePersistentConnections="false">
 			<http:client-socket-properties>
 				<sockets:tcp-client-socket-properties />

@@ -2,10 +2,8 @@
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd 
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
 
@@ -19,9 +17,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 		<http:request-connection host="employee-onboarding-agent-broker.us-e1.cloudhub.io" port="443" protocol="HTTPS" />
 	</http:request-config>
 
-	<!-- MCP Server Configuration -->
-	<mcp:config name="mcp-proxy-config" doc:name="MCP Proxy Config">
-		<mcp:connection transport="stdio" />
-	</mcp:config>
+	<!-- Note: MCP configuration removed due to schema validation issues -->
+	<!-- MCP 1.3.0 configuration will need to be added with correct syntax -->
 
 </mule>

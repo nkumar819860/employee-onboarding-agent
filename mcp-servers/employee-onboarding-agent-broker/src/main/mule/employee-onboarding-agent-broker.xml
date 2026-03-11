@@ -276,7 +276,7 @@ output application/java
 				doc:name="Create Employee Profile" />
 			<http:request method="POST"
 				config-ref="employee-onboarding-mcp-config"
-				path="/api/create-employee" doc:name="Create Employee Profile">
+				path="/create-employee" doc:name="Create Employee Profile">
 				<http:body>#[vars.employeeData]</http:body>
 				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
 			</http:request>
@@ -311,7 +311,7 @@ output application/json
 			</ee:transform>
 			<http:request method="POST"
 				config-ref="asset-allocation-mcp-config"
-				path="/api/allocate-assets" doc:name="Allocate Assets">
+				path="/allocate-assets" doc:name="Allocate Assets">
 				<http:body>#[payload]</http:body>
 				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
 			</http:request>
@@ -347,7 +347,7 @@ output application/json
 			</ee:transform>
 			<http:request method="POST"
 				config-ref="notification-mcp-config"
-				path="/api/send-welcome-email" doc:name="Send Welcome Email">
+				path="/send-welcome-email" doc:name="Send Welcome Email">
 				<http:body>#[payload]</http:body>
 				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
 			</http:request>
@@ -382,7 +382,7 @@ output application/json
 			</ee:transform>
 			<http:request method="POST"
 				config-ref="notification-mcp-config"
-				path="/api/send-asset-notification"
+				path="/send-asset-notification"
 				doc:name="Send Asset Notification">
 				<http:body>#[payload]</http:body>
 				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
@@ -421,7 +421,7 @@ output application/json
 			</ee:transform>
 			<http:request method="POST"
 				config-ref="notification-mcp-config"
-				path="/api/send-onboarding-complete"
+				path="/send-onboarding-complete"
 				doc:name="Send Onboarding Complete">
 				<http:body>#[payload]</http:body>
 				<http:headers>#[{"Content-Type": "application/json"}]</http:headers>
