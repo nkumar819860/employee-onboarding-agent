@@ -21,6 +21,8 @@
 		<cloudhub.application.name>assets-allocation-system-api</cloudhub.application.name>
 		<connectedApp.clientId>aec0b3117f7d4d4e8433a7d3d23bc80e</connectedApp.clientId>
 		<connectedApp.clientSecret>9bc9D86a77b343b98a148C0313239aDA</connectedApp.clientSecret>
+		<businessGroup.id>your-business-group-id</businessGroup.id>
+		<targetSpace.id>your-private-space-id</targetSpace.id>
 	</properties>
 
 	<build>
@@ -34,6 +36,7 @@
 					<cloudhub2Deployment>
 						<applicationName>${cloudhub.application.name}</applicationName>
 						<target>${cloudhub.application.name}</target>
+						<businessGroup>${businessGroup.id}</businessGroup>
 
 						<!-- FIXED Connected App -->
 						<connectedAppClientId>${connectedApp.clientId}</connectedAppClientId>
