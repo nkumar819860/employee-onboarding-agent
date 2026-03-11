@@ -267,116 +267,28 @@ output application/json
 	</flow>
 
 	<!-- Allocate Assets Endpoint -->
-	<flow
-		name="post:\allocate-assets:application\json:assets-allocation-system-api-config">
-		<logger level="INFO"
-			message="Asset allocation request: #[payload]" />
+	<flow name="post:\allocate-assets:application\json:assets-allocation-system-api-config">
+		<logger level="INFO" message="Asset allocation request: #[payload]" />
 
 		<try doc:name="Asset Allocation">
 			<!-- Store original payload FIRST -->
-			<set-variable variableName="originalPayload"
-				value="#[payload]" />
+			<set-variable variableName="originalPayload" value="#[payload]" />
 
 			<!-- Validate required fields -->
 			<choice doc:name="Validate Request">
-				<when
-					expression="#[payload.employeeId == null or payload.employeeId == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD"
-						description="Employee ID is required for asset allocation" />
+				<when expression="#[payload.employeeId == null or payload.employeeId == '']">
+					<raise-error type="VALIDATION:MISSING_FIELD" description="Employee ID is required for asset allocation" />
 				</when>
 			</choice>
 
-			<!-- Asset Allocation Logic with Employee API Integration -->
+			<!-- Asset Allocation Logic with Enhanced Employee Sync First Strategy -->
 			<choice doc:name="Database Strategy">
 				<when expression='#["h2" == "${db.strategy}"]'>
-					<!-- Fetch employee details from Employee Onboarding API -->
-					<try doc:name="Get Employee Details">
-						<http:request method="GET"
-							config-ref="Employee_Onboarding_Request_Config"
-							path="/api/get-employee/{empId}">
-							<http:uri-params><![CDATA[#[{
-								empId: vars.originalPayload.employeeId
-							}]]]></http:uri-params>
-						</http:request>
-
-						<set-variable variableName="employeeDetails"
-							value="#[payload]" />
-						<logger level="INFO"
-							message="Employee details retrieved: #[vars.employeeDetails.employee_id]" />
-						
-						<!-- Check if employee details are null or empty -->
-						<choice doc:name="Validate Employee Details">
-							<when expression="#[vars.employeeDetails == null or vars.employeeDetails.employee_id == null]">
-								<raise-error type="EMPLOYEE:NOT_FOUND"
-									description="Employee not found in the system" />
-							</when>
-						</choice>
-
-						<error-handler>
-							<on-error-continue type="HTTP:*">
-								<logger level="ERROR"
-									message="Employee API unavailable or employee not found" />
-								<raise-error type="EMPLOYEE:API_UNAVAILABLE"
-									description="Employee onboarding system is unavailable" />
-							</on-error-continue>
-						</error-handler>
-					</try>
+					<!-- Enhanced Employee Details Retrieval: Sync Table First, API Fallback -->
+					<flow-ref name="get-employee-details-with-fallback" />
 
 					<!-- Find and allocate available assets -->
-					<set-variable variableName="requestedAssets"
-						value="#[vars.originalPayload.assets default ['laptop', 'id-card']]" />
-					<set-variable variableName="allocatedAssets"
-						value="#[[]]" />
-
-					<!-- Allocate each requested asset type -->
-					<foreach collection="#[vars.requestedAssets]">
-						<set-variable variableName="assetType"
-							value="#[if (payload is String) upper(payload replace '-' with '_') else upper(payload['type'] replace '-' with '_')]" />
-
-						<!-- Find available asset of this type -->
-						<db:select config-ref="H2_Database_Config">
-							<db:sql>SELECT a.*, ac.category_name FROM assets a JOIN asset_categories ac ON a.category_id = ac.category_id WHERE ac.category_name = :assetType AND a.status = 'AVAILABLE' LIMIT 1</db:sql>
-							<db:input-parameters><![CDATA[#[{
-								assetType: vars.assetType
-							}]]]></db:input-parameters>
-						</db:select>
-
-						<!-- Allocate asset if available -->
-						<choice doc:name="Asset Available Check">
-							<when expression="#[sizeOf(payload) > 0]">
-								<set-variable variableName="selectedAsset"
-									value="#[payload[0]]" />
-
-								<!-- Update asset status to ALLOCATED -->
-								<db:update config-ref="H2_Database_Config">
-									<db:sql>UPDATE assets SET status = 'ALLOCATED' WHERE asset_id = :assetId</db:sql>
-									<db:input-parameters><![CDATA[#[{
-										assetId: vars.selectedAsset.asset_id
-									}]]]></db:input-parameters>
-								</db:update>
-
-								<!-- Create allocation record -->
-								<db:insert config-ref="H2_Database_Config">
-									<db:sql>INSERT INTO asset_allocations (asset_id, employee_id, allocated_date, status)
-										VALUES (:assetId, :employeeId, CURRENT_TIMESTAMP, 'ACTIVE')</db:sql>
-									<db:input-parameters><![CDATA[#[{
-										assetId: vars.selectedAsset.asset_id,
-										employeeId: vars.originalPayload.employeeId
-									}]]]></db:input-parameters>
-								</db:insert>
-
-								<!-- Add to allocated assets list -->
-								<set-variable variableName="allocatedAssets"
-									value="#[vars.allocatedAssets ++ [vars.selectedAsset]]" />
-								<logger level="INFO"
-									message="Allocated asset #[vars.selectedAsset.asset_tag] to employee #[vars.originalPayload.employeeId]" />
-							</when>
-							<otherwise>
-								<logger level="WARN"
-									message="No available assets found for type: #[vars.assetType]" />
-							</otherwise>
-						</choice>
-					</foreach>
+					<flow-ref name="allocate-assets-to-employee" />
 
 					<!-- Build successful response -->
 					<ee:transform doc:name="Allocation Success Response">
@@ -390,16 +302,18 @@ output application/json
 	database: "h2",
 	employeeId: vars.originalPayload.employeeId,
 	employeeName: (vars.employeeDetails.first_name default "Unknown") ++ " " ++ (vars.employeeDetails.last_name default "Employee"),
+	employeeSource: vars.employeeSource default "unknown",
 	employeeDetails: {
 		employeeId: vars.employeeDetails.employee_id,
 		firstName: vars.employeeDetails.first_name,
 		lastName: vars.employeeDetails.last_name,
 		email: vars.employeeDetails.email,
 		department: vars.employeeDetails.department_id,
-		position: vars.employeeDetails.position
+		position: vars.employeeDetails.position,
+		syncSource: vars.employeeDetails.sync_source default "fallback"
 	},
 	allocatedAssets: vars.allocatedAssets map {
-		assetId: $.asset_id as String,
+		assetId: $.id as String,
 		assetTag: $.asset_tag,
 		assetName: $.asset_name,
 		category: $.category_name,
@@ -438,8 +352,7 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400
-							</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">400</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
@@ -458,14 +371,12 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">404
-							</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">404</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
 				<on-error-continue type="DB:*">
-					<logger level="ERROR"
-						message="Database error during asset allocation: #[error.description]" />
+					<logger level="ERROR" message="Database error during asset allocation: #[error.description]" />
 					<ee:transform doc:name="Database Error Response">
 						<ee:message>
 							<ee:set-payload><![CDATA[%dw 2.0
@@ -479,8 +390,7 @@ output application/json
 }]]></ee:set-payload>
 						</ee:message>
 						<ee:variables>
-							<ee:set-variable variableName="httpStatus">500
-							</ee:set-variable>
+							<ee:set-variable variableName="httpStatus">500</ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 				</on-error-continue>
@@ -488,596 +398,196 @@ output application/json
 		</try>
 	</flow>
 
-	<!-- Return Asset Endpoint -->
-	<flow
-		name="post:\return-asset:application\json:assets-allocation-system-api-config">
-		<logger level="INFO" message="Asset return request: #[payload]" />
+	<!-- ================================================================== -->
+	<!-- HELPER SUB-FLOWS -->
+	<!-- ================================================================== -->
 
-		<try doc:name="Asset Return">
-			<!-- Validate required fields -->
-			<choice doc:name="Validate Request">
-				<when
-					expression="#[payload.assetTag == null or payload.assetTag == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD"
-						description="Asset tag is required for asset return" />
+	<!-- Enhanced Employee Details Retrieval: Sync Table First, API Fallback -->
+	<sub-flow name="get-employee-details-with-fallback">
+		<logger level="INFO" message="Starting employee details retrieval for: #[vars.originalPayload.employeeId]" />
+		
+		<!-- Layer 1: Check local employee sync table first -->
+		<try doc:name="Check Local Employee Sync">
+			<db:select config-ref="H2_Database_Config">
+				<db:sql>SELECT * FROM employee_sync WHERE employee_id = :empId AND status = 'ACTIVE'</db:sql>
+				<db:input-parameters><![CDATA[#[{
+					empId: vars.originalPayload.employeeId
+				}]]]></db:input-parameters>
+			</db:select>
+			
+			<choice doc:name="Local Employee Found">
+				<when expression="#[sizeOf(payload) > 0]">
+					<set-variable variableName="employeeDetails" value="#[payload[0]]" />
+					<set-variable variableName="employeeSource" value="local-sync" />
+					<logger level="INFO" message="Employee details found in local sync table: #[vars.employeeDetails.employee_id] (synced from #[vars.employeeDetails.sync_source])" />
 				</when>
+				<otherwise>
+					<!-- Layer 2: Call Employee Onboarding API if not in local sync -->
+					<logger level="INFO" message="Employee not found in local sync table, calling employee onboarding API..." />
+					<flow-ref name="fetch-employee-from-api-and-sync" />
+				</otherwise>
 			</choice>
 
-			<!-- Database Asset Return Logic -->
-			<choice doc:name="Database Strategy">
-				<when expression='#["h2" == "${db.strategy}"]'>
-					<!-- Find asset by tag -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT * FROM assets WHERE asset_tag = :assetTag</db:sql>
+			<error-handler>
+				<on-error-continue type="DB:*">
+					<logger level="WARN" message="Local employee sync table unavailable, calling API directly" />
+					<!-- Fallback to API call if local DB is unavailable -->
+					<flow-ref name="fetch-employee-from-api-direct" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+
+	<!-- Fetch Employee from API and Sync to Local DB -->
+	<sub-flow name="fetch-employee-from-api-and-sync">
+		<try doc:name="Call Employee Onboarding API">
+			<http:request method="GET" config-ref="Employee_Onboarding_Request_Config" path="/api/get-employee/{empId}">
+				<http:uri-params><![CDATA[#[{
+					empId: vars.originalPayload.employeeId
+				}]]]></http:uri-params>
+			</http:request>
+
+			<choice doc:name="API Employee Found">
+				<when expression="#[payload != null and payload.employee_id != null]">
+					<set-variable variableName="employeeDetails" value="#[payload]" />
+					<set-variable variableName="employeeSource" value="api-fetched" />
+					<logger level="INFO" message="Employee details retrieved from API: #[vars.employeeDetails.employee_id]" />
+					
+					<!-- Store in local sync for future use -->
+					<try doc:name="Sync Employee to Local DB">
+						<db:insert config-ref="H2_Database_Config">
+							<db:sql>MERGE INTO employee_sync (employee_id, first_name, last_name, email, phone, department_id, position, hire_date, status, manager_name, sync_source, last_sync_date) 
+								VALUES (:empId, :firstName, :lastName, :email, :phone, :deptId, :position, :hireDate, :status, :manager, :syncSource, CURRENT_TIMESTAMP)</db:sql>
+							<db:input-parameters><![CDATA[#[{
+								empId: vars.employeeDetails.employee_id,
+								firstName: vars.employeeDetails.first_name,
+								lastName: vars.employeeDetails.last_name,
+								email: vars.employeeDetails.email,
+								phone: vars.employeeDetails.phone,
+								deptId: vars.employeeDetails.department_id,
+								position: vars.employeeDetails.position,
+								hireDate: vars.employeeDetails.hire_date,
+								status: vars.employeeDetails.status default 'ACTIVE',
+								manager: vars.employeeDetails.manager_name default null,
+								syncSource: 'employee-onboarding-api'
+							}]]]></db:input-parameters>
+						</db:insert>
+						<logger level="INFO" message="Employee synced to local database for future use" />
+						<error-handler>
+							<on-error-continue type="DB:*">
+								<logger level="WARN" message="Failed to sync employee to local database: #[error.description]" />
+							</on-error-continue>
+						</error-handler>
+					</try>
+				</when>
+				<otherwise>
+					<!-- Layer 3: Create fallback employee record -->
+					<logger level="WARN" message="Employee not found in API, creating fallback record" />
+					<flow-ref name="create-fallback-employee-record" />
+				</otherwise>
+			</choice>
+
+			<error-handler>
+				<on-error-continue type="HTTP:*">
+					<logger level="WARN" message="Employee onboarding API unavailable - creating fallback record" />
+					<flow-ref name="create-fallback-employee-record" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+
+	<!-- Direct API Call Fallback (when local DB is unavailable) -->
+	<sub-flow name="fetch-employee-from-api-direct">
+		<try doc:name="Direct API Call Fallback">
+			<http:request method="GET" config-ref="Employee_Onboarding_Request_Config" path="/api/get-employee/{empId}">
+				<http:uri-params><![CDATA[#[{
+					empId: vars.originalPayload.employeeId
+				}]]]></http:uri-params>
+			</http:request>
+			<set-variable variableName="employeeDetails" value="#[payload]" />
+			<set-variable variableName="employeeSource" value="api-direct" />
+			<logger level="INFO" message="Employee details retrieved directly from API (DB unavailable)" />
+			<error-handler>
+				<on-error-continue type="HTTP:*">
+					<flow-ref name="create-fallback-employee-record" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+
+	<!-- Create Fallback Employee Record -->
+	<sub-flow name="create-fallback-employee-record">
+		<set-variable variableName="employeeDetails" value="#[{
+			employee_id: vars.originalPayload.employeeId,
+			first_name: vars.originalPayload.firstName default 'Unknown',
+			last_name: vars.originalPayload.lastName default 'Employee',
+			email: vars.originalPayload.email default (vars.originalPayload.employeeId ++ '@company.com'),
+			phone: vars.originalPayload.phone default '+1-555-0000',
+			department_id: vars.originalPayload.departmentId default 1,
+			position: vars.originalPayload.position default 'Employee',
+			status: 'PENDING',
+			sync_source: 'fallback-record'
+		}]" />
+		<set-variable variableName="employeeSource" value="fallback" />
+		<logger level="WARN" message="Created fallback employee record for: #[vars.employeeDetails.employee_id]" />
+	</sub-flow>
+
+	<!-- Allocate Assets to Employee -->
+	<sub-flow name="allocate-assets-to-employee">
+		<logger level="INFO" message="Starting asset allocation for employee: #[vars.originalPayload.employeeId]" />
+		
+		<set-variable variableName="requestedAssets" value="#[vars.originalPayload.assets default ['laptop', 'id-card']]" />
+		<set-variable variableName="allocatedAssets" value="#[[]]" />
+
+		<!-- Allocate each requested asset type -->
+		<foreach collection="#[vars.requestedAssets]">
+			<set-variable variableName="assetType" value="#[if (payload is String) upper(payload replace '-' with '_') else upper(payload['type'] replace '-' with '_')]" />
+
+			<logger level="DEBUG" message="Looking for available asset of type: #[vars.assetType]" />
+
+			<!-- Find available asset of this type -->
+			<db:select config-ref="H2_Database_Config">
+				<db:sql>SELECT a.*, ac.category_name FROM assets a JOIN asset_categories ac ON a.category_id = ac.id WHERE ac.category_name = :assetType AND a.status = 'AVAILABLE' LIMIT 1</db:sql>
+				<db:input-parameters><![CDATA[#[{
+					assetType: vars.assetType
+				}]]]></db:input-parameters>
+			</db:select>
+
+			<!-- Allocate asset if available -->
+			<choice doc:name="Asset Available Check">
+				<when expression="#[sizeOf(payload) > 0]">
+					<set-variable variableName="selectedAsset" value="#[payload[0]]" />
+
+					<!-- Update asset status to ALLOCATED -->
+					<db:update config-ref="H2_Database_Config">
+						<db:sql>UPDATE assets SET status = 'ALLOCATED', updated_at = CURRENT_TIMESTAMP WHERE id = :assetId</db:sql>
 						<db:input-parameters><![CDATA[#[{
-							assetTag: payload.assetTag
+							assetId: vars.selectedAsset.id
 						}]]]></db:input-parameters>
-					</db:select>
+					</db:update>
 
-					<choice doc:name="Asset Found Check">
-						<when expression="#[sizeOf(payload) > 0]">
-							<set-variable variableName="asset"
-								value="#[payload[0]]" />
-
-							<!-- Update asset status and condition -->
-							<db:update config-ref="H2_Database_Config">
-								<db:sql>UPDATE assets 
-									SET status = 'AVAILABLE', 
-										condition_status = :condition,
-										updated_date = CURRENT_TIMESTAMP 
-									WHERE asset_id = :assetId</db:sql>
-								<db:input-parameters><![CDATA[#[{
-									condition: payload.condition default "GOOD",
-									assetId: vars.asset.asset_id
-								}]]]></db:input-parameters>
-							</db:update>
-
-							<!-- Update allocation record to RETURNED -->
-							<db:update config-ref="H2_Database_Config">
-								<db:sql>UPDATE asset_allocations 
-									SET status = 'RETURNED', 
-										returned_date = CURRENT_TIMESTAMP,
-										return_notes = :notes
-									WHERE asset_id = :assetId AND status = 'ACTIVE'</db:sql>
-								<db:input-parameters><![CDATA[#[{
-									notes: payload.notes default "Asset returned",
-									assetId: vars.asset.asset_id
-								}]]]></db:input-parameters>
-							</db:update>
-
-							<ee:transform doc:name="Return Success Response">
-								<ee:message>
-									<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Asset returned successfully",
-	assetTag: vars.originalPayload.assetTag,
-	condition: vars.originalPayload.condition default "GOOD",
-	returnDate: now(),
-	timestamp: now()
-}]]></ee:set-payload>
-								</ee:message>
-							</ee:transform>
-						</when>
-						<otherwise>
-							<ee:transform doc:name="Asset Not Found Response">
-								<ee:message>
-									<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: false,
-	error: "ASSET_NOT_FOUND",
-	message: "Asset with tag '" ++ vars.originalPayload.assetTag ++ "' not found",
-	timestamp: now()
-}]]></ee:set-payload>
-								</ee:message>
-								<ee:variables>
-									<ee:set-variable variableName="httpStatus">404
-									</ee:set-variable>
-								</ee:variables>
-							</ee:transform>
-						</otherwise>
-					</choice>
-				</when>
-				<otherwise>
-					<!-- Mock Mode Response -->
-					<ee:transform doc:name="Mock Return Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Asset returned successfully (mock mode)",
-	assetTag: payload.assetTag,
-	condition: payload.condition default "GOOD",
-	returnDate: now(),
-	timestamp: now(),
-	mockMode: true
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
-				</otherwise>
-			</choice>
-
-			<error-handler>
-				<on-error-continue type="VALIDATION:*">
-					<ee:transform doc:name="Validation Error Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: false,
-	error: "VALIDATION_ERROR",
-	message: error.description,
-	timestamp: now()
-}]]></ee:set-payload>
-						</ee:message>
-						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400
-							</ee:set-variable>
-						</ee:variables>
-					</ee:transform>
-				</on-error-continue>
-				<on-error-continue type="DB:*">
-					<logger level="ERROR"
-						message="Database error during asset return: #[error.description]" />
-					<ee:transform doc:name="Database Error Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: false,
-	error: "DATABASE_ERROR", 
-	message: "Unable to process asset return due to database error",
-	timestamp: now()
-}]]></ee:set-payload>
-						</ee:message>
-						<ee:variables>
-							<ee:set-variable variableName="httpStatus">500
-							</ee:set-variable>
-						</ee:variables>
-					</ee:transform>
-				</on-error-continue>
-			</error-handler>
-		</try>
-
-		<!-- Store original payload -->
-		<set-variable variableName="originalPayload"
-			value="#[payload]" />
-	</flow>
-
-	<!-- List Assets Endpoint -->
-	<flow name="get:\list-assets:assets-allocation-system-api-config">
-		<logger level="INFO"
-			message="List assets request - Status: #[attributes.queryParams.status default 'ALL'], Category: #[attributes.queryParams.category default 'ALL']" />
-
-		<try doc:name="List Assets">
-			<choice doc:name="Database Strategy">
-				<when expression='#["h2" == "${db.strategy}"]'>
-					<!-- Build dynamic SQL query based on filters -->
-					<set-variable variableName="statusFilter"
-						value="#[attributes.queryParams.status]" />
-					<set-variable variableName="categoryFilter"
-						value="#[attributes.queryParams.category]" />
-					<set-variable variableName="baseQuery"
-						value="SELECT a.*, ac.category_name FROM assets a JOIN asset_categories ac ON a.category_id = ac.category_id WHERE 1=1" />
-
-					<!-- Add status filter if provided -->
-					<choice doc:name="Status Filter">
-						<when
-							expression="#[vars.statusFilter != null and vars.statusFilter != '']">
-							<set-variable variableName="query"
-								value="#[vars.baseQuery ++ ' AND a.status = \'' ++ upper(vars.statusFilter) ++ '\'']" />
-						</when>
-						<otherwise>
-							<set-variable variableName="query"
-								value="#[vars.baseQuery]" />
-						</otherwise>
-					</choice>
-
-					<!-- Add category filter if provided -->
-					<choice doc:name="Category Filter">
-						<when
-							expression="#[vars.categoryFilter != null and vars.categoryFilter != '']">
-							<set-variable variableName="query"
-								value="#[vars.query ++ ' AND ac.category_name = \'' ++ upper(vars.categoryFilter) ++ '\'']" />
-						</when>
-					</choice>
-
-					<!-- Add ordering -->
-					<set-variable variableName="query"
-						value="#[vars.query ++ ' ORDER BY a.asset_tag']" />
-
-					<!-- Execute query -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>#[vars.query]</db:sql>
-					</db:select>
-
-					<!-- Get statistics -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT 
-							status,
-							COUNT(*) as count
-							FROM assets 
-							GROUP BY status</db:sql>
-					</db:select>
-					<set-variable variableName="statistics"
-						value="#[payload]" />
-
-					<!-- Build response -->
-					<ee:transform doc:name="List Assets Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Assets retrieved successfully",
-	database: "h2", 
-	assets: vars.assetResults map {
-		assetId: $.asset_id as String,
-		assetTag: $.asset_tag,
-		assetName: $.asset_name,
-		category: $.category_name,
-		brand: $.brand,
-		model: $.model,
-		serialNumber: $.serial_number,
-		condition: $.condition_status,
-		status: $.status,
-		allocationDate: $.created_date
-	},
-	assetCount: sizeOf(vars.assetResults),
-	statistics: vars.statistics reduce (item, acc = {}) -> acc ++ { (lower(item.status)): item.count },
-	timestamp: now(),
-	mockMode: false
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
-				</when>
-				<otherwise>
-					<!-- Mock Mode Response -->
-					<flow-ref name="assets-list-mock-response" />
-				</otherwise>
-			</choice>
-
-			<error-handler>
-				<on-error-continue type="DB:*">
-					<logger level="ERROR"
-						message="Database error during asset listing: #[error.description]" />
-					<flow-ref name="assets-list-mock-response" />
-				</on-error-continue>
-			</error-handler>
-		</try>
-
-		<!-- Store asset results for transform -->
-		<set-variable variableName="assetResults"
-			value="#[payload]" />
-	</flow>
-
-	<!-- Get Available Assets Endpoint -->
-	<flow
-		name="get:\get-available-assets:assets-allocation-system-api-config">
-		<logger level="INFO" message="Get available assets request" />
-
-		<try doc:name="Get Available Assets">
-			<choice doc:name="Database Strategy">
-				<when expression='#["h2" == "${db.strategy}"]'>
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT a.*, ac.category_name 
-							FROM assets a 
-							JOIN asset_categories ac ON a.category_id = ac.category_id 
-							WHERE a.status = 'AVAILABLE' 
-							ORDER BY ac.category_name, a.asset_tag</db:sql>
-					</db:select>
-
-					<!-- Get unique categories -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT DISTINCT ac.category_name 
-							FROM assets a 
-							JOIN asset_categories ac ON a.category_id = ac.category_id 
-							WHERE a.status = 'AVAILABLE'
-							ORDER BY ac.category_name</db:sql>
-					</db:select>
-					<set-variable variableName="categories" value="#[payload]" />
-
-					<!-- Build response -->
-					<ee:transform doc:name="Available Assets Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Available assets retrieved successfully",
-	database: "h2",
-	assets: vars.availableAssets map {
-		assetId: $.asset_id as String,
-		assetTag: $.asset_tag,
-		assetName: $.asset_name,
-		category: $.category_name,
-		brand: $.brand,
-		model: $.model,
-		serialNumber: $.serial_number,
-		condition: $.condition_status,
-		status: $.status
-	},
-	assetCount: sizeOf(vars.availableAssets),
-	categories: vars.categories map $.category_name,
-	timestamp: now()
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
-				</when>
-				<otherwise>
-					<!-- Mock Mode Response -->
-					<ee:transform
-						doc:name="Mock Available Assets Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Available assets retrieved successfully (mock mode)",
-	database: "mock",
-	assets: [
-		{
-			assetId: "1",
-			assetTag: "LAP-001",
-			assetName: "Dell Latitude 7420",
-			category: "LAPTOP",
-			brand: "Dell",
-			model: "Latitude 7420",
-			serialNumber: "DL123456",
-			condition: "NEW",
-			status: "AVAILABLE"
-		},
-		{
-			assetId: "2",
-			assetTag: "ID-001",
-			assetName: "Employee ID Card",
-			category: "ID_CARD",
-			brand: "HID Global",
-			model: "ProxCard II",
-			serialNumber: "ID987654",
-			condition: "NEW",
-			status: "AVAILABLE"
-		}
-	],
-	assetCount: 2,
-	categories: ["LAPTOP", "ID_CARD"],
-	timestamp: now(),
-	mockMode: true
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
-				</otherwise>
-			</choice>
-
-			<error-handler>
-				<on-error-continue type="DB:*">
-					<logger level="ERROR"
-						message="Database error during available assets retrieval: #[error.description]" />
-					<ee:transform
-						doc:name="Mock Available Assets Fallback">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Available assets retrieved successfully (fallback mode)",
-	database: "mock",
-	assets: [
-		{
-			assetId: "1",
-			assetTag: "LAP-001",
-			assetName: "Dell Latitude 7420",
-			category: "LAPTOP",
-			brand: "Dell",
-			model: "Latitude 7420",
-			serialNumber: "DL123456",
-			condition: "NEW",
-			status: "AVAILABLE"
-		}
-	],
-	assetCount: 1,
-	categories: ["LAPTOP"],
-	timestamp: now(),
-	mockMode: true
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
-				</on-error-continue>
-			</error-handler>
-		</try>
-
-		<!-- Store available assets for transform -->
-		<set-variable variableName="availableAssets"
-			value="#[payload]" />
-	</flow>
-
-	<!-- Get Employee Assets Endpoint -->
-	<flow
-		name="post:\get-employee-assets:application\json:assets-allocation-system-api-config">
-		<logger level="INFO"
-			message="Get employee assets request: #[payload]" />
-
-		<try doc:name="Get Employee Assets">
-			<!-- Validate required fields -->
-			<choice doc:name="Validate Request">
-				<when
-					expression="#[payload.employeeId == null or payload.employeeId == '']">
-					<raise-error type="VALIDATION:MISSING_FIELD"
-						description="Employee ID is required to get employee assets" />
-				</when>
-			</choice>
-
-			<!-- Database Employee Assets Logic -->
-			<choice doc:name="Database Strategy">
-				<when expression='#["h2" == "${db.strategy}"]'>
-					<!-- Get employee assets -->
-					<db:select config-ref="H2_Database_Config">
-						<db:sql>SELECT a.*, ac.category_name, aa.allocated_date, aa.status as allocation_status
-							FROM assets a 
-							JOIN asset_categories ac ON a.category_id = ac.category_id
-							JOIN asset_allocations aa ON a.asset_id = aa.asset_id
-							WHERE aa.employee_id = :employeeId AND aa.status = 'ACTIVE'
-							ORDER BY aa.allocated_date DESC</db:sql>
+					<!-- Create allocation record -->
+					<db:insert config-ref="H2_Database_Config">
+						<db:sql>INSERT INTO asset_allocations (asset_id, employee_id, allocated_date, status, allocation_reason, approved_by) VALUES (:assetId, :employeeId, CURRENT_DATE, 'ACTIVE', :reason, :approvedBy)</db:sql>
 						<db:input-parameters><![CDATA[#[{
-							employeeId: payload.employeeId
+							assetId: vars.selectedAsset.id,
+							employeeId: vars.originalPayload.employeeId,
+							reason: 'Employee Onboarding - ' ++ vars.assetType,
+							approvedBy: 'System Auto-Allocation'
 						}]]]></db:input-parameters>
-					</db:select>
+					</db:insert>
 
-					<choice doc:name="Assets Found Check">
-						<when expression="#[sizeOf(payload) > 0]">
-							<!-- Get unique categories -->
-							<set-variable variableName="employeeAssets"
-								value="#[payload]" />
-							<set-variable variableName="assetCategories"
-								value="#[payload distinctBy $.category_name map $.category_name]" />
-
-							<ee:transform doc:name="Employee Assets Response">
-								<ee:message>
-									<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Employee assets retrieved successfully",
-	database: "h2",
-	employeeId: vars.originalPayload.employeeId,
-	assets: vars.employeeAssets map {
-		assetId: $.asset_id as String,
-		assetTag: $.asset_tag,
-		assetName: $.asset_name,
-		category: $.category_name,
-		brand: $.brand,
-		model: $.model,
-		serialNumber: $.serial_number,
-		condition: $.condition_status,
-		status: $.status,
-		allocationDate: $.allocated_date,
-		allocationStatus: $.allocation_status
-	},
-	assetCount: sizeOf(vars.employeeAssets),
-	categories: vars.assetCategories,
-	timestamp: now()
-}]]></ee:set-payload>
-								</ee:message>
-							</ee:transform>
-						</when>
-						<otherwise>
-							<ee:transform doc:name="No Assets Found Response">
-								<ee:message>
-									<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "No assets found for employee",
-	database: "h2",
-	employeeId: vars.originalPayload.employeeId,
-	assets: [],
-	assetCount: 0,
-	categories: [],
-	timestamp: now()
-}]]></ee:set-payload>
-								</ee:message>
-							</ee:transform>
-						</otherwise>
-					</choice>
+					<!-- Add to allocated assets list -->
+					<set-variable variableName="allocatedAssets" value="#[vars.allocatedAssets ++ [vars.selectedAsset]]" />
+					<logger level="INFO" message="Successfully allocated asset #[vars.selectedAsset.asset_tag] (#[vars.selectedAsset.asset_name]) to employee #[vars.originalPayload.employeeId]" />
 				</when>
 				<otherwise>
-					<!-- Mock Mode Response -->
-					<ee:transform doc:name="Mock Employee Assets Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: true,
-	message: "Employee assets retrieved successfully (mock mode)",
-	database: "mock",
-	employeeId: payload.employeeId,
-	assets: [
-		{
-			assetId: "1",
-			assetTag: "LAP-001",
-			assetName: "Dell Latitude 7420",
-			category: "LAPTOP",
-			brand: "Dell",
-			model: "Latitude 7420",
-			serialNumber: "DL123456",
-			condition: "NEW",
-			status: "ALLOCATED",
-			allocationDate: now() - |P30D|,
-			allocationStatus: "ACTIVE"
-		}
-	],
-	assetCount: 1,
-	categories: ["LAPTOP"],
-	timestamp: now(),
-	mockMode: true
-}]]></ee:set-payload>
-						</ee:message>
-					</ee:transform>
+					<logger level="WARN" message="No available assets found for type: #[vars.assetType]" />
 				</otherwise>
 			</choice>
+		</foreach>
 
-			<error-handler>
-				<on-error-continue type="VALIDATION:*">
-					<ee:transform doc:name="Validation Error Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: false,
-	error: "VALIDATION_ERROR",
-	message: error.description,
-	timestamp: now()
-}]]></ee:set-payload>
-						</ee:message>
-						<ee:variables>
-							<ee:set-variable variableName="httpStatus">400
-							</ee:set-variable>
-						</ee:variables>
-					</ee:transform>
-				</on-error-continue>
-				<on-error-continue type="DB:*">
-					<logger level="ERROR"
-						message="Database error during employee assets retrieval: #[error.description]" />
-					<ee:transform doc:name="Database Error Response">
-						<ee:message>
-							<ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-	success: false,
-	error: "DATABASE_ERROR",
-	message: "Unable to retrieve employee assets due to database error",
-	timestamp: now()
-}]]></ee:set-payload>
-						</ee:message>
-						<ee:variables>
-							<ee:set-variable variableName="httpStatus">500
-							</ee:set-variable>
-						</ee:variables>
-					</ee:transform>
-				</on-error-continue>
-			</error-handler>
-		</try>
-
-		<!-- Store original payload -->
-		<set-variable variableName="originalPayload"
-			value="#[payload]" />
-	</flow>
+		<logger level="INFO" message="Asset allocation completed. Total allocated: #[sizeOf(vars.allocatedAssets)] assets" />
+	</sub-flow>
 
 </mule>

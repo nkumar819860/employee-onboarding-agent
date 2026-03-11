@@ -108,7 +108,7 @@ output application/json
 	<!-- H2 Configuration with Connection Pooling and Fixed Script Initialization -->
 	<db:config name="H2_Database_Config"
 		doc:name="H2 Database Config with Fixed Scripts">
-		<db:generic-connection url="${db.h2.url}"
+		<db:generic-connection url="${db.h2.url};INIT=RUNSCRIPT FROM 'classpath:init-script.sql'"
 			driverClassName="${db.h2.driverClassName}" user="${db.h2.username}"
 			password="${db.h2.password}">
 			<db:pooling-profile
