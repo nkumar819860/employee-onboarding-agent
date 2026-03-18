@@ -10,89 +10,128 @@
                           http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
                           http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
 
-    <!-- Import Global Configuration -->
+    <!-- ✅ Import global.xml FIRST (contains MCP_Listener_config & agent-broker-http-config) -->
     <import file="global.xml" />
 
-    <!-- Main Employee Onboarding Agent MCP Proxy Flow -->
-    <flow name="employee-onboarding-agent-mcp-proxy" doc:name="Employee Onboarding Agent MCP Proxy">
-        <mcp:tool-listener config-ref="MCP_Server_Config" doc:name="MCP Tool Listener" />
+    <!-- TOOL 1: orchestrate-employee-onboarding -->
+    <flow name="mcp-orchestrate-employee-onboarding">
+        <mcp:tool-listener config-ref="MCP_Listener_config" 
+                           name="orchestrate-employee-onboarding" 
+                           doc:name="Onboarding Tool Listener">
+            <mcp:description><![CDATA[Complete employee onboarding orchestration including profile creation, asset allocation, and notifications]]></mcp:description>
+            <mcp:parameters-schema><![CDATA[{
+                "type": "object",
+                "properties": {
+                    "firstName": {"type": "string", "description": "Employee first name"},
+                    "lastName": {"type": "string", "description": "Employee last name"},
+                    "email": {"type": "string", "format": "email", "description": "Employee email address"},
+                    "phone": {"type": "string", "pattern": "^[+]?[1-9]\\d{1,14}$", "description": "Employee phone number"},
+                    "department": {"type": "string", "enum": ["HR", "IT", "Finance", "Sales", "Marketing", "Operations", "Engineering"], "description": "Department name"},
+                    "position": {"type": "string", "description": "Job position/title"},
+                    "startDate": {"type": "string", "format": "date", "description": "Start date in YYYY-MM-DD format"},
+                    "salary": {"type": "number", "minimum": 0, "description": "Annual salary"},
+                    "manager": {"type": "string", "description": "Manager name"},
+                    "managerEmail": {"type": "string", "format": "email", "description": "Manager email address"},
+                    "companyName": {"type": "string", "description": "Company name"},
+                    "assets": {"type": "array", "items": {"type": "string"}, "description": "List of assets to allocate"}
+                },
+                "required": ["firstName", "lastName", "email", "department", "position", "startDate"]
+            }]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="Employee onboarding orchestration initiated successfully" />
+            </mcp:responses>
+        </mcp:tool-listener>
         
-        <logger level="INFO" message="MCP Request received: Method=#[payload.method], ID=#[payload.id]" doc:name="Log MCP Request" />
+        <logger level="INFO" message="MCP: Starting onboarding for #[payload.params.firstName] #[payload.params.lastName]"/>
         
-        <choice doc:name="Route MCP Methods">
-            <when expression='#[payload.method == "orchestrate-employee-onboarding"]'>
-                <flow-ref name="mcp-orchestrate-employee-onboarding-flow" doc:name="Orchestrate Employee Onboarding" />
-            </when>
-            <when expression='#[payload.method == "get-onboarding-status"]'>
-                <flow-ref name="mcp-get-onboarding-status-flow" doc:name="Get Onboarding Status" />
-            </when>
-            <when expression='#[payload.method == "retry-failed-step"]'>
-                <flow-ref name="mcp-retry-failed-step-flow" doc:name="Retry Failed Step" />
-            </when>
-            <when expression='#[payload.method == "check-system-health"]'>
-                <flow-ref name="mcp-check-system-health-flow" doc:name="Check System Health" />
-            </when>
-            <when expression='#[payload.method == "ai-reasoning"]'>
-                <flow-ref name="mcp-ai-reasoning-flow" doc:name="AI Reasoning" />
-            </when>
-            <otherwise>
-                <set-variable variableName="errorResponse" value='{"code": -32601, "message": "Method not found"}' doc:name="Set Error Response" />
-                <logger level="ERROR" message="Error: Method not found for method=#[payload.method]" doc:name="Log Error" />
-            </otherwise>
-        </choice>
+        <try>
+            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/orchestrate-employee-onboarding">
+                <http:body>#[payload.params]</http:body>
+            </http:request>
+            
+            <ee:transform>
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    content: [
+        {"type": "text", text: "Employee onboarding completed successfully!"},
+        {"type": "text", text: "Results:\n" ++ write(payload, "application/json")}
+    ],
+    isError: false
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            
+            <error-handler>
+                <on-error-propagate>
+                    <ee:transform>
+                        <ee:message>
+                            <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    content: [{"type": "text", text: "Onboarding failed: " ++ error.description}],
+    isError: true
+}]]></ee:set-payload>
+                        </ee:message>
+                    </ee:transform>
+                </on-error-propagate>
+            </error-handler>
+        </try>
     </flow>
 
-    <!-- MCP Orchestrate Employee Onboarding Sub-flow -->
-    <sub-flow name="mcp-orchestrate-employee-onboarding-flow" doc:name="MCP Orchestrate Employee Onboarding Sub-flow">
-        <logger level="INFO" message="MCP: Starting Employee Onboarding Process for #[payload.params.firstName] #[payload.params.lastName]" doc:name="Log Onboarding Start" />
+    <!-- TOOL 2: get-onboarding-status -->
+    <flow name="mcp-get-onboarding-status">
+        <mcp:tool-listener config-ref="MCP_Listener_config" 
+                           name="get-onboarding-status" 
+                           doc:name="Status Tool Listener">
+            <mcp:description><![CDATA[Retrieve the current status of an employee onboarding process]]></mcp:description>
+            <mcp:parameters-schema><![CDATA[{
+                "type": "object",
+                "properties": {
+                    "employeeId": {"type": "string", "description": "Unique employee identifier"},
+                    "email": {"type": "string", "format": "email", "description": "Employee email address"}
+                },
+                "anyOf": [{"required": ["employeeId"]}, {"required": ["email"]}]
+            }]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="Onboarding status retrieved successfully" />
+            </mcp:responses>
+        </mcp:tool-listener>
         
-        <try doc:name="Try Agent Broker Call">
-            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/orchestrate-employee-onboarding" doc:name="Call Agent Broker">
-                <http:body><![CDATA[#[payload.params]]]></http:body>
-                <http:headers><![CDATA[#[{
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }]]]></http:headers>
+        <logger level="INFO" message="MCP: Getting status for employeeId=#[payload.params.employeeId default payload.params.email]"/>
+        
+        <try>
+            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/get-onboarding-status">
+                <http:body>#[payload.params]</http:body>
             </http:request>
-
-            <set-variable variableName="brokerResponse" value="#[payload]" doc:name="Store Broker Response" />
             
-            <ee:transform doc:name="Transform MCP Response">
+            <ee:transform>
                 <ee:message>
                     <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
     content: [
-        {
-            type: "text",
-            text: "Employee onboarding orchestration completed successfully!"
-        },
-        {
-            type: "text", 
-            text: "Results:\n" ++ write(vars.brokerResponse, "application/json", {"indent": true})
-        }
+        {"type": "text", text: "Onboarding Status:"},
+        {"type": "text", text: write(payload, "application/json")}
     ],
     isError: false
 }]]></ee:set-payload>
                 </ee:message>
             </ee:transform>
-
+            
             <error-handler>
-                <on-error-propagate type="ANY">
-                    <logger level="ERROR" message="Error orchestrating employee onboarding: #[error.description]" doc:name="Log Error" />
-                    <ee:transform doc:name="Transform Error Response">
+                <on-error-propagate>
+                    <ee:transform>
                         <ee:message>
                             <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-    content: [
-        {
-            type: "text",
-            text: "Failed to orchestrate employee onboarding: " ++ error.description
-        }
-    ],
+    content: [{"type": "text", text: "Status check failed: " ++ error.description}],
     isError: true
 }]]></ee:set-payload>
                         </ee:message>
@@ -100,59 +139,58 @@ output application/json
                 </on-error-propagate>
             </error-handler>
         </try>
-    </sub-flow>
+    </flow>
 
-    <!-- MCP Get Onboarding Status Sub-flow -->
-    <sub-flow name="mcp-get-onboarding-status-flow" doc:name="MCP Get Onboarding Status Sub-flow">
-        <logger level="INFO" message="MCP: Getting onboarding status for employeeId=#[payload.params.employeeId default 'unknown']" doc:name="Log Status Request" />
+    <!-- TOOL 3: retry-failed-step -->
+    <flow name="mcp-retry-failed-step">
+        <mcp:tool-listener config-ref="MCP_Listener_config" 
+                           name="retry-failed-step" 
+                           doc:name="Retry Tool Listener">
+            <mcp:description><![CDATA[Retry a specific failed step in the employee onboarding process]]></mcp:description>
+            <mcp:parameters-schema><![CDATA[{
+                "type": "object",
+                "properties": {
+                    "employeeId": {"type": "string", "description": "Unique employee identifier"},
+                    "step": {"type": "string", "enum": ["profile-creation", "asset-allocation", "welcome-email", "asset-notification", "onboarding-complete"], "description": "The specific onboarding step to retry"}
+                },
+                "required": ["employeeId", "step"]
+            }]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="Step retry initiated successfully" />
+            </mcp:responses>
+        </mcp:tool-listener>
         
-        <try doc:name="Try Agent Broker Call">
-            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/get-onboarding-status" doc:name="Call Agent Broker">
-                <http:body><![CDATA[#[payload.params]]]></http:body>
-                <http:headers><![CDATA[#[{
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }]]]></http:headers>
+        <logger level="INFO" message="MCP: Retrying step #[payload.params.step] for employeeId #[payload.params.employeeId]"/>
+        
+        <try>
+            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/retry-failed-step">
+                <http:body>#[payload.params]</http:body>
             </http:request>
-
-            <set-variable variableName="statusResponse" value="#[payload]" doc:name="Store Status Response" />
             
-            <ee:transform doc:name="Transform Status Response">
+            <ee:transform>
                 <ee:message>
                     <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
     content: [
-        {
-            type: "text",
-            text: "Onboarding Status Retrieved:"
-        },
-        {
-            type: "text",
-            text: write(vars.statusResponse, "application/json", {"indent": true})
-        }
+        {"type": "text", text: "Step retry initiated successfully!"},
+        {"type": "text", text: write(payload, "application/json")}
     ],
     isError: false
 }]]></ee:set-payload>
                 </ee:message>
             </ee:transform>
-
+            
             <error-handler>
-                <on-error-propagate type="ANY">
-                    <logger level="ERROR" message="Error getting onboarding status: #[error.description]" doc:name="Log Error" />
-                    <ee:transform doc:name="Transform Error Response">
+                <on-error-propagate>
+                    <ee:transform>
                         <ee:message>
                             <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-    content: [
-        {
-            type: "text",
-            text: "Failed to get onboarding status: " ++ error.description
-        }
-    ],
+    content: [{"type": "text", text: "Retry failed: " ++ error.description}],
     isError: true
 }]]></ee:set-payload>
                         </ee:message>
@@ -160,59 +198,56 @@ output application/json
                 </on-error-propagate>
             </error-handler>
         </try>
-    </sub-flow>
+    </flow>
 
-    <!-- MCP Retry Failed Step Sub-flow -->
-    <sub-flow name="mcp-retry-failed-step-flow" doc:name="MCP Retry Failed Step Sub-flow">
-        <logger level="INFO" message="MCP: Retrying failed step=#[payload.params.step default 'unknown'] for employeeId=#[payload.params.employeeId default 'unknown']" doc:name="Log Retry Request" />
+    <!-- TOOL 4: check-system-health -->
+    <flow name="mcp-check-system-health">
+        <mcp:tool-listener config-ref="MCP_Listener_config" 
+                           name="check-system-health" 
+                           doc:name="Health Tool Listener">
+            <mcp:description><![CDATA[Check the health status of all employee onboarding system components]]></mcp:description>
+            <mcp:parameters-schema><![CDATA[{
+                "type": "object",
+                "properties": {
+                    "detailed": {"type": "boolean", "default": false, "description": "Include detailed component status information"}
+                }
+            }]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="System health status retrieved successfully" />
+            </mcp:responses>
+        </mcp:tool-listener>
         
-        <try doc:name="Try Agent Broker Call">
-            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/retry-failed-step" doc:name="Call Agent Broker">
-                <http:body><![CDATA[#[payload.params]]]></http:body>
-                <http:headers><![CDATA[#[{
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }]]]></http:headers>
+        <logger level="INFO" message="MCP: System health check"/>
+        
+        <try>
+            <http:request method="GET" config-ref="agent-broker-http-config" path="/api/health">
+                <http:query-params>#[output application/java --- { detailed: payload.params.detailed default false }]</http:query-params>
             </http:request>
-
-            <set-variable variableName="retryResponse" value="#[payload]" doc:name="Store Retry Response" />
             
-            <ee:transform doc:name="Transform Retry Response">
+            <ee:transform>
                 <ee:message>
                     <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
     content: [
-        {
-            type: "text",
-            text: "Step retry initiated successfully!"
-        },
-        {
-            type: "text",
-            text: write(vars.retryResponse, "application/json", {"indent": true})
-        }
+        {"type": "text", text: "System Health:"},
+        {"type": "text", text: write(payload, "application/json")}
     ],
     isError: false
 }]]></ee:set-payload>
                 </ee:message>
             </ee:transform>
-
+            
             <error-handler>
-                <on-error-propagate type="ANY">
-                    <logger level="ERROR" message="Error retrying failed step: #[error.description]" doc:name="Log Error" />
-                    <ee:transform doc:name="Transform Error Response">
+                <on-error-propagate>
+                    <ee:transform>
                         <ee:message>
                             <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-    content: [
-        {
-            type: "text",
-            text: "Failed to retry step: " ++ error.description
-        }
-    ],
+    content: [{"type": "text", text: "Health check failed: " ++ error.description}],
     isError: true
 }]]></ee:set-payload>
                         </ee:message>
@@ -220,57 +255,66 @@ output application/json
                 </on-error-propagate>
             </error-handler>
         </try>
-    </sub-flow>
+    </flow>
 
-    <!-- MCP Check System Health Sub-flow -->
-    <sub-flow name="mcp-check-system-health-flow" doc:name="MCP Check System Health Sub-flow">
-        <logger level="INFO" message="MCP: Checking system health" doc:name="Log Health Request" />
+    <!-- TOOL 5: ai-reasoning -->
+    <flow name="mcp-ai-reasoning">
+        <mcp:tool-listener config-ref="MCP_Listener_config" 
+                           name="ai-reasoning" 
+                           doc:name="AI Tool Listener">
+            <mcp:description><![CDATA[Use AI reasoning to understand natural language requests and suggest onboarding actions]]></mcp:description>
+            <mcp:parameters-schema><![CDATA[{
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "minLength": 10, "maxLength": 1000, "description": "Natural language request for employee onboarding assistance"},
+                    "context": {
+                        "type": "object",
+                        "properties": {
+                            "employeeId": {"type": "string"},
+                            "department": {"type": "string"},
+                            "currentStep": {"type": "string"}
+                        },
+                        "description": "Optional context to help with reasoning"
+                    }
+                },
+                "required": ["prompt"]
+            }]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="AI reasoning completed successfully" />
+            </mcp:responses>
+        </mcp:tool-listener>
         
-        <try doc:name="Try Agent Broker Health Check">
-            <http:request method="GET" config-ref="agent-broker-http-config" path="/api/health" doc:name="Call Agent Broker Health">
-                <http:headers><![CDATA[#[{
-                    "Accept": "application/json"
-                }]]]></http:headers>
+        <logger level="INFO" message="MCP: AI reasoning for prompt: #[substring(payload.params.prompt, 0, 100)]..."/>
+        
+        <try>
+            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/think">
+                <http:body>#[payload.params]</http:body>
             </http:request>
-
-            <set-variable variableName="healthResponse" value="#[payload]" doc:name="Store Health Response" />
             
-            <ee:transform doc:name="Transform Health Response">
+            <ee:transform>
                 <ee:message>
                     <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
     content: [
-        {
-            type: "text",
-            text: "System Health Check Results:"
-        },
-        {
-            type: "text",
-            text: write(vars.healthResponse, "application/json", {"indent": true})
-        }
+        {"type": "text", text: "AI Reasoning:"},
+        {"type": "text", text: write(payload, "application/json")}
     ],
     isError: false
 }]]></ee:set-payload>
                 </ee:message>
             </ee:transform>
-
+            
             <error-handler>
-                <on-error-propagate type="ANY">
-                    <logger level="ERROR" message="Error checking system health: #[error.description]" doc:name="Log Error" />
-                    <ee:transform doc:name="Transform Error Response">
+                <on-error-propagate>
+                    <ee:transform>
                         <ee:message>
                             <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-    content: [
-        {
-            type: "text",
-            text: "Failed to check system health: " ++ error.description
-        }
-    ],
+    content: [{"type": "text", text: "AI reasoning failed: " ++ error.description}],
     isError: true
 }]]></ee:set-payload>
                         </ee:message>
@@ -278,66 +322,6 @@ output application/json
                 </on-error-propagate>
             </error-handler>
         </try>
-    </sub-flow>
-
-    <!-- MCP AI Reasoning Sub-flow -->
-    <sub-flow name="mcp-ai-reasoning-flow" doc:name="MCP AI Reasoning Sub-flow">
-        <logger level="INFO" message="MCP: Processing AI reasoning request" doc:name="Log AI Request" />
-        
-        <try doc:name="Try Agent Broker AI Call">
-            <http:request method="POST" config-ref="agent-broker-http-config" path="/api/mcp/tools/think" doc:name="Call Agent Broker AI">
-                <http:body><![CDATA[#[payload.params]]]></http:body>
-                <http:headers><![CDATA[#[{
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }]]]></http:headers>
-            </http:request>
-
-            <set-variable variableName="aiResponse" value="#[payload]" doc:name="Store AI Response" />
-            
-            <ee:transform doc:name="Transform AI Response">
-                <ee:message>
-                    <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-    content: [
-        {
-            type: "text",
-            text: "AI Reasoning Result:"
-        },
-        {
-            type: "text",
-            text: write(vars.aiResponse, "application/json", {"indent": true})
-        }
-    ],
-    isError: false
-}]]></ee:set-payload>
-                </ee:message>
-            </ee:transform>
-
-            <error-handler>
-                <on-error-propagate type="ANY">
-                    <logger level="ERROR" message="Error processing AI reasoning: #[error.description]" doc:name="Log Error" />
-                    <ee:transform doc:name="Transform Error Response">
-                        <ee:message>
-                            <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-    content: [
-        {
-            type: "text",
-            text: "Failed to process AI reasoning: " ++ error.description
-        }
-    ],
-    isError: true
-}]]></ee:set-payload>
-                        </ee:message>
-                    </ee:transform>
-                </on-error-propagate>
-            </error-handler>
-        </try>
-    </sub-flow>
+    </flow>
 
 </mule>
